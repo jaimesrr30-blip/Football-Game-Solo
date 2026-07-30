@@ -282,6 +282,15 @@ table.league tr.me td.tname{ color:var(--accent); }
 /* ---------- epic moments ---------- */
 .field-wrap.shake{ animation: fieldShake 0.4s ease; }
 @keyframes fieldShake{ 0%,100%{transform:translate(0,0);} 20%{transform:translate(-6px,3px);} 40%{transform:translate(6px,-3px);} 60%{transform:translate(-4px,2px);} 80%{transform:translate(4px,-2px);} }
+
+/* ---------- vida del jugador ---------- */
+.trophy-row{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; font-weight:600; }
+.trophy-row:last-child{ border-bottom:none; }
+.fan-card{ background:var(--panel-solid); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:8px; }
+.fan-name{ font-weight:800; font-size:12.5px; margin-bottom:4px; }
+.fan-text{ font-size:12.5px; color:var(--muted); font-style:italic; line-height:1.4; }
+.news-line{ font-size:12.5px; color:var(--muted); padding:6px 0; border-bottom:1px solid var(--border); }
+.news-line:last-child{ border-bottom:none; }
 </style>
 
 <div class="app">
@@ -306,6 +315,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <button class="tab-btn active" data-tab="inicio"><span class="ico">🏠</span>Inicio</button>
         <button class="tab-btn" data-tab="jugador"><span class="ico">🧊</span>Jugador</button>
         <button class="tab-btn" data-tab="plantilla"><span class="ico">🪑</span>Plantilla</button>
+        <button class="tab-btn" data-tab="vida"><span class="ico">🛋️</span>Vida</button>
         <button class="tab-btn" data-tab="liga"><span class="ico">🏆</span>Liga</button>
         <button class="tab-btn" data-tab="buzon"><span class="ico">📩</span>Buzón<span class="badge" id="mailBadge" style="display:none">0</span></button>
       </div>
@@ -314,11 +324,12 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-inicio" class="tabpane"></div>
         <div id="tab-jugador" class="tabpane" style="display:none"></div>
         <div id="tab-plantilla" class="tabpane" style="display:none"></div>
+        <div id="tab-vida" class="tabpane" style="display:none"></div>
         <div id="tab-liga" class="tabpane" style="display:none"></div>
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v5 — partido jugable (ordenador o móvil) + entrenamientos + viaje al partido + momentos épicos (cámara lenta, MVP) + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. Defensa/regate avanzados llegarán más adelante — el multijugador real no es viable en un Artefacto.</div>
+    <div class="footer-note">Cube League: Career · v6 — partido jugable (ordenador o móvil) + vida del jugador (casa, trofeos, cartas de fans, noticias) + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. Defensa/regate avanzados llegarán más adelante — el multijugador real no es viable en un Artefacto.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -403,6 +414,39 @@ const CLUBS = [
   {name:'Titanio SC',     color:'#fb923c', power:73},
 ];
 const BENCH_NAMES = ['Nova','Rex','Blitz','Orion','Kade','Zeta','Milo','Vex','Draco','Luma'];
+
+/* ---- vida del jugador ---- */
+const HOME_TIERS = [
+  {minLevel:1,  name:'Piso compartido',  icon:'🏢', desc:'Un piso pequeño cerca del campo de entrenamiento.'},
+  {minLevel:6,  name:'Apartamento propio', icon:'🏠', desc:'Ya tienes tu propio espacio, con vistas al estadio.'},
+  {minLevel:12, name:'Casa con jardín',  icon:'🏡', desc:'Suficiente para invitar a los compañeros después de un partido.'},
+  {minLevel:20, name:'Villa de lujo',    icon:'🏰', desc:'La vida de estrella empieza a notarse.'},
+  {minLevel:28, name:'Mansión Cube',     icon:'🏛️', desc:'Una leyenda necesita una mansión a la altura.'},
+];
+function homeTier(){
+  let tier = HOME_TIERS[0];
+  HOME_TIERS.forEach(t=>{ if(state.level>=t.minLevel) tier=t; });
+  const next = HOME_TIERS.find(t=>t.minLevel>state.level);
+  return { tier, next };
+}
+const FAN_NAMES = ['Mia','Leo','Sofi','Kai','Uma','Theo','Nina','Zack','Ada','Bruno','Wendy','Iker'];
+const FAN_LETTERS = [
+  '¡Eres mi jugador de cubos favorito! Firma mi camiseta algún día 💙',
+  'Vi tu gol del sábado como diez veces en la repetición. ¡Sigue así!',
+  'Mi hijo quiere ser como tú cuando sea mayor. Gracias por inspirar.',
+  '¿Cuál es tu secreto para regatear tan bien? ¡Cuéntamelo todo!',
+  'Fui al estadio solo para verte jugar. Mereció la pena cada minuto.',
+  'Tengo tu cubo de peluche en mi cuarto. ¡El mejor delantero de la liga!',
+  'Cada vez que sales al campo sé que algo especial va a pasar. Gracias.',
+];
+function maybeGenerateFanMail(){
+  const shined = match.perf.goals>=2 || (match.scoreA>match.scoreB && (match.perf.goals+match.perf.assists)>=2);
+  if(!shined || Math.random()>0.5) return;
+  const name = FAN_NAMES[Math.floor(Math.random()*FAN_NAMES.length)];
+  const text = FAN_LETTERS[Math.floor(Math.random()*FAN_LETTERS.length)];
+  state.fanMail.unshift({id:Date.now()+Math.random(), name, text, when:`T${state.season} · J${state.matchday}`});
+  if(state.fanMail.length>20) state.fanMail.length=20;
+}
 const FORM_BENCH_THRESHOLD = 40;
 
 /* ---- Copa Cube ---- */
@@ -520,6 +564,8 @@ function freshState(){
     seasonGoals: makeSeasonGoals(),
     seasonStats: { goals:0, assists:0, recoveries:0 },
     trainingDone: { velocidad:false, tiro:false, regate:false, defensa:false },
+    trophyHistory: [],
+    fanMail: [],
   };
 }
 function generateBench(){
@@ -594,6 +640,8 @@ async function init(){
   if(!state.seasonStats) state.seasonStats = { goals:0, assists:0, recoveries:0 };
   if(state.career.cupTrophies===undefined) state.career.cupTrophies = 0;
   if(!state.trainingDone) state.trainingDone = { velocidad:false, tiro:false, regate:false, defensa:false };
+  if(!state.trophyHistory) state.trophyHistory = [];
+  if(!state.fanMail) state.fanMail = [];
   if(!state.schedule){ state.schedule = generateSchedule(); }
   if(!state.table){ state.table = makeTable(); }
   if(!state.mail || !state.mail.length){
@@ -643,7 +691,7 @@ function renderAll(){
   const badge = document.getElementById('mailBadge');
   if(unread>0){ badge.style.display='flex'; badge.textContent=unread; } else badge.style.display='none';
 
-  renderInicio(); renderJugador(); renderPlantilla(); renderLiga(); renderBuzon();
+  renderInicio(); renderJugador(); renderPlantilla(); renderVida(); renderLiga(); renderBuzon();
 }
 
 function colorHex(id, list){ const it=(list||COLOR_ITEMS).find(c=>c.id===id); return it?it.hex:'#38bdf8'; }
@@ -869,6 +917,46 @@ function renderPlantilla(){
       <div class="squad-grid">
         ${state.squad.bench.map(b=>`<div class="squad-card"><div class="pos-tag">${b.pos}</div><div class="pname">${b.name}</div><div class="povr">${b.ovr}</div></div>`).join('')}
       </div>
+    </div>
+  `;
+}
+
+/* ---- VIDA DEL JUGADOR ---- */
+function renderVida(){
+  const el=document.getElementById('tab-vida');
+  const {tier, next} = homeTier();
+  const trophyRows = state.trophyHistory.length
+    ? state.trophyHistory.slice().reverse().map(t=>`<div class="trophy-row"><span>${t.type==='liga'?'🏆':'🥇'}</span><span>${t.type==='liga'?'Liga Cube':'Copa Cube'} — Temporada ${t.season}</span></div>`).join('')
+    : `<div class="empty-hint">Todavía no has ganado ningún título. ¡A por el primero!</div>`;
+  const fanCards = state.fanMail.length
+    ? state.fanMail.slice(0,8).map(f=>`<div class="fan-card"><div class="fan-name">💌 ${f.name}</div><div class="fan-text">"${f.text}"</div></div>`).join('')
+    : `<div class="empty-hint">Todavía no has recibido cartas de fans. Marca un par de goles y verás.</div>`;
+  const news = state.mail.slice(0,6).map(m=>`<div class="news-line">📰 ${m.title}</div>`).join('') || `<div class="empty-hint">Sin noticias todavía.</div>`;
+  el.innerHTML = `
+    <div class="card">
+      <h2>Tu casa</h2>
+      <div style="display:flex; gap:16px; align-items:center;">
+        <div style="font-size:52px;">${tier.icon}</div>
+        <div>
+          <div style="font-weight:800;font-size:15px;">${tier.name}</div>
+          <div class="sub" style="margin:2px 0 0;">${tier.desc}</div>
+        </div>
+      </div>
+      ${next ? `<div class="sub" style="margin-top:12px;">Próxima mejora en el nivel ${next.minLevel}: ${next.icon} ${next.name}</div>` : `<div class="sub" style="margin-top:12px;">Has alcanzado la mejor vivienda disponible.</div>`}
+    </div>
+    <div class="card">
+      <h2>Vitrina de trofeos</h2>
+      <div class="sub">${state.career.trophies} Liga(s) · ${state.career.cupTrophies} Copa(s)</div>
+      ${trophyRows}
+    </div>
+    <div class="card">
+      <h2>💻 Ordenador — Últimas noticias</h2>
+      ${news}
+    </div>
+    <div class="card">
+      <h2>Cartas de fans</h2>
+      <div class="sub">Los aficionados te escriben cuando destacas en el campo.</div>
+      ${fanCards}
     </div>
   `;
 }
@@ -1631,6 +1719,7 @@ function endMatch(forfeited){
     seasonEnded=true; finishSeason();
   }
 
+  maybeGenerateFanMail();
   save();
   showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope);
 }
@@ -1654,6 +1743,7 @@ function endCupMatch(forfeited){
     if(stage==='final'){
       state.cup.champion = true;
       state.career.cupTrophies++;
+      state.trophyHistory.push({season:state.season, type:'copa', club:CLUBS[state.clubIdx].name});
       addMail('🏆 ¡CAMPEÓN DE LA COPA CUBE!', `Has ganado la Copa Cube esta temporada tras superar a ${match.rival.name} en la final. Un trofeo más en la vitrina.`, 'Trofeo');
       cupNote = '🏆 ¡Eres el campeón de la Copa Cube!';
     } else {
@@ -1672,6 +1762,7 @@ function endCupMatch(forfeited){
   let wonEnvelope = null;
   if(won) wonEnvelope = rollEnvelopeRarity();
   checkSeasonGoals();
+  maybeGenerateFanMail();
   save();
   showResultModal(outcome, xp, levelUps, false, wonEnvelope, cupNote);
 }
@@ -1783,6 +1874,7 @@ function finishSeason(){
   const youPos = rows.findIndex(r=>r.idx===state.clubIdx)+1;
   if(champ.idx===state.clubIdx){
     state.career.trophies++;
+    state.trophyHistory.push({season:state.season, type:'liga', club:CLUBS[state.clubIdx].name});
     const goal = state.seasonGoals.find(g=>g.type==='champion');
     if(goal && !goal.done){ goal.done=true; state.xp += goal.reward; }
     addMail(`🏆 ¡CAMPEÓN DE LIGA!`, `Has llevado al ${CLUBS[state.clubIdx].name} a ganar la Liga Cube en la Temporada ${state.season}. La afición celebra por todo lo alto.`, 'Trofeo');
