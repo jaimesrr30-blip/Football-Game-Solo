@@ -299,7 +299,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v2 — partido jugable (ordenador o móvil) + progresión + plantilla con cambios + fichajes + liga + buzón. Clima dinámico y sobres coleccionables llegarán en capas futuras.</div>
+    <div class="footer-note">Cube League: Career · v3 — partido jugable (ordenador o móvil) + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -310,6 +310,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <span id="hudAway">Rival</span>
       </div>
       <div class="timer-block" id="hudTimer">00:00</div>
+      <div id="hudWeather" style="font-size:13px;font-weight:700;color:var(--muted);"></div>
       <div class="meters">
         <div class="meter"><div class="lab">TURBO</div><div class="track"><div class="fill" id="turboFill" style="width:100%;background:linear-gradient(90deg,var(--accent2),var(--accent))"></div></div></div>
         <div class="meter"><div class="lab">POTENCIA</div><div class="track"><div class="fill" id="powerFill" style="width:0%;background:linear-gradient(90deg,var(--gold),var(--danger))"></div></div></div>
@@ -351,13 +352,17 @@ async function storageGet(key){
   try{ if(window.claude && window.claude.storage && window.claude.storage.get){ const v = await window.claude.storage.get(key); if(v!=null) return v; } }catch(e){}
   try{ if(window.storage && window.storage.getItem){ const v = await window.storage.getItem(key); if(v!=null) return v; } }catch(e){}
   try{ if(window.storage && window.storage.get){ const v = await window.storage.get(key); if(v!=null) return v; } }catch(e){}
+  try{ const v = window.localStorage.getItem(key); if(v!=null) return v; }catch(e){}
   return memoryStore[key] ?? null;
 }
 async function storageSet(key, value){
   memoryStore[key] = value;
-  try{ if(window.claude && window.claude.storage && window.claude.storage.set){ await window.claude.storage.set(key, value); return; } }catch(e){}
-  try{ if(window.storage && window.storage.setItem){ await window.storage.setItem(key, value); return; } }catch(e){}
-  try{ if(window.storage && window.storage.set){ await window.storage.set(key, value); return; } }catch(e){}
+  let ok=false;
+  try{ if(window.claude && window.claude.storage && window.claude.storage.set){ await window.claude.storage.set(key, value); ok=true; } }catch(e){}
+  try{ if(window.storage && window.storage.setItem){ await window.storage.setItem(key, value); ok=true; } }catch(e){}
+  try{ if(window.storage && window.storage.set){ await window.storage.set(key, value); ok=true; } }catch(e){}
+  try{ window.localStorage.setItem(key, value); ok=true; }catch(e){}
+  return ok;
 }
 
 /* ============ DATA ============ */
@@ -398,6 +403,29 @@ const CELEB_ITEMS = [
   {id:'forbidden', label:'Explosión Prohibida', rarity:'forbidden', unlockLevel:25},
 ];
 const LEVEL_UNLOCK_ANNOUNCE = {2:'sunset',3:'trail_blue',5:'toxic',6:'backflip',8:'trail_fire',10:'galaxy',13:'eclipse',16:'trail_void',20:'divine',25:'forbidden'};
+const ALL_COSMETICS = [
+  ...COLOR_ITEMS.map(i=>({...i, field:'color'})),
+  ...TRAIL_ITEMS.map(i=>({...i, field:'trail'})),
+  ...CELEB_ITEMS.map(i=>({...i, field:'celeb'})),
+];
+const RARITY_WEIGHTS = [['common',42],['rare',27],['epic',16],['legendary',9],['mythic',4.3],['divine',1],['forbidden',0.4]];
+const RARITY_ICONS = {common:'🎁',rare:'🎁',epic:'💎',legendary:'👑',mythic:'🔥',divine:'✨',forbidden:'☠️'};
+const RARITY_COLOR = {common:'#9CA3AF',rare:'#3B82F6',epic:'#A855F7',legendary:'#F59E0B',mythic:'#EF4444',divine:'#FFFFFF',forbidden:'#ff2fb0'};
+
+const WEATHER_TYPES = [
+  {id:'sunny', label:'Soleado', icon:'☀️'},
+  {id:'rain',  label:'Lluvia',  icon:'🌧️'},
+  {id:'snow',  label:'Nieve',   icon:'❄️'},
+  {id:'night', label:'Noche',   icon:'🌙'},
+  {id:'storm', label:'Tormenta',icon:'⚡'},
+  {id:'fog',   label:'Niebla',  icon:'🌫️'},
+];
+const WEATHER_BALL_FRICTION = {sunny:0.985, night:0.985, fog:0.985, rain:0.991, storm:0.991, snow:0.975};
+const WEATHER_SPEED_MUL = {sunny:1, night:1, fog:1, rain:0.94, storm:0.92, snow:0.88};
+function weatherForMatchday(season, matchday){
+  const idx = Math.abs(season*131 + matchday*977) % WEATHER_TYPES.length;
+  return WEATHER_TYPES[idx];
+}
 
 /* ============ STATE ============ */
 let state = null;
@@ -540,10 +568,11 @@ function renderInicio(){
   const fixture = currentFixture();
   const s=state.stats;
   const fi = formInfo();
+  const weather = weatherForMatchday(state.season, state.matchday);
   el.innerHTML = `
     <div class="card">
       <h2>Próximo partido</h2>
-      <div class="sub">Jornada ${state.matchday} de ${state.schedule.length} · Temporada ${state.season} · Empiezas: <b style="color:${fi.roleColor};">${fi.roleLabel}</b></div>
+      <div class="sub">Jornada ${state.matchday} de ${state.schedule.length} · Temporada ${state.season} · Empiezas: <b style="color:${fi.roleColor};">${fi.roleLabel}</b> · ${weather.icon} ${weather.label}</div>
       <div class="next-match">
         <div class="vs-block">
           <div class="team-pill">
@@ -801,7 +830,7 @@ function openSettings(){
       <button class="chip-btn ${mode==='desktop'?'active':''}" id="modeDesktop" style="flex:1;padding:16px 10px;text-align:center;">🖥️<br>Ordenador<br><span style="font-weight:400;font-size:10.5px;opacity:.75;">Teclado</span></button>
       <button class="chip-btn ${mode==='mobile'?'active':''}" id="modeMobile" style="flex:1;padding:16px 10px;text-align:center;">📱<br>Móvil<br><span style="font-weight:400;font-size:10.5px;opacity:.75;">Joystick táctil</span></button>
     </div>
-    <div class="sub" style="margin-top:14px;">Al cambiar de modo el juego se reinicia para aplicar los controles correctos. Tu progreso se guarda automáticamente antes de reiniciar.</div>
+    <div class="sub" style="margin-top:14px;">El cambio se aplica al instante, sin reiniciar nada. Se usará en el próximo partido que juegues.</div>
   `);
   document.getElementById('modeDesktop').onclick=()=>setControlMode('desktop');
   document.getElementById('modeMobile').onclick=()=>setControlMode('mobile');
@@ -811,8 +840,7 @@ async function setControlMode(mode){
   state.settings.controlMode = mode;
   await save();
   closeModal();
-  toast(mode==='mobile' ? 'Activando modo móvil…' : 'Activando modo ordenador…');
-  setTimeout(()=>location.reload(), 500);
+  toast(mode==='mobile' ? '📱 Modo móvil activado' : '🖥️ Modo ordenador activado');
 }
 
 /* ============ MATCH ENGINE ============ */
@@ -943,10 +971,11 @@ function bindMobileControls(){
 function startMatch(){
   const fixture = currentFixture();
   const s = state.stats;
-  const maxSpeed = 2.5 + (s.velocidad/99)*2.3;
+  const weather = weatherForMatchday(state.season, state.matchday);
+  const maxSpeed = (2.5 + (s.velocidad/99)*2.3) * (WEATHER_SPEED_MUL[weather.id] ?? 1);
   const startAsSub = state.form < FORM_BENCH_THRESHOLD;
   match = {
-    rivalIdx: fixture.rivalIdx, isHome: fixture.isHome,
+    rivalIdx: fixture.rivalIdx, isHome: fixture.isHome, weather,
     scoreA:0, scoreB:0, timeLeft:92, paused:false, ended:false,
     lastToucher:null, lastToucherPrevGoalTeam:null,
     turbo:100, chargeStart:0, charging:false, facing:{x:1,y:0},
@@ -978,6 +1007,7 @@ function startMatch(){
   document.getElementById('hudHome').textContent = CLUBS[state.clubIdx].name;
   document.getElementById('hudAway').textContent = CLUBS[fixture.rivalIdx].name;
   document.getElementById('hudScore').textContent = '0 - 0';
+  document.getElementById('hudWeather').textContent = `${weather.icon} ${weather.label}`;
   document.getElementById('goalBanner').classList.remove('show');
   updateBenchPanel();
   if(startAsSub) toast(`🪑 Empiezas en el banquillo — juega ${match.standIn.name} en tu lugar. El entrenador decidirá si te mete.`);
@@ -1096,10 +1126,11 @@ function runAI(){
 function aiFor(list, enemies, enemyGK, teamTag){
   const ball=match.ball;
   const forwardDir = teamTag==='me' ? 1 : -1;
+  const chaseRange = match.weather.id==='fog' ? 120 : 170;
   let closest=null, cd=Infinity;
   list.forEach(e=>{ const d=dist(e,ball); if(d<cd){cd=d; closest=e;} });
   list.forEach(e=>{
-    if(e===closest && cd<170){
+    if(e===closest && cd<chaseRange){
       const goalX = teamTag==='me'? FIELD_W-20 : 20;
       const distToGoal = Math.abs(goalX-e.x);
       if(distToGoal<230 && cd<40){
@@ -1147,7 +1178,8 @@ function physicsStep(dt){
     e.y=Math.max(e.r, Math.min(FIELD_H-e.r, e.y));
   });
   ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
-  ball.vx*=0.985; ball.vy*=0.985;
+  const fr = WEATHER_BALL_FRICTION[match.weather.id] ?? 0.985;
+  ball.vx*=fr; ball.vy*=fr;
   if(ball.y<ball.r || ball.y>FIELD_H-ball.r){ ball.vy*=-0.75; ball.y=Math.max(ball.r,Math.min(FIELD_H-ball.r,ball.y)); }
   const onGoalLine = (ball.y>GOAL_Y1 && ball.y<GOAL_Y2);
   if(!onGoalLine){
@@ -1259,8 +1291,57 @@ function drawMatch(){
 
   ctx.beginPath(); ctx.fillStyle='#f5f7ff'; ctx.arc(match.ball.x, match.ball.y, match.ball.r, 0, Math.PI*2); ctx.fill();
   ctx.strokeStyle='#222'; ctx.lineWidth=1.2; ctx.stroke();
+
+  drawWeather(ctx);
 }
 function trailColorFor(id){ return {spark:'#ffe58a',trail_blue:'#38bdf8',trail_fire:'#ff7a3c',trail_void:'#a855f7'}[id]||'#ffe58a'; }
+function ensureWeatherParticles(){
+  if(!match._weatherParticles){
+    const isRain = match.weather.id==='rain'||match.weather.id==='storm';
+    const count = isRain ? 70 : (match.weather.id==='snow' ? 50 : 0);
+    match._weatherParticles = Array.from({length:count},()=>({
+      x:Math.random()*FIELD_W, y:Math.random()*FIELD_H,
+      v: match.weather.id==='snow' ? 0.6+Math.random()*0.8 : 6+Math.random()*4,
+      drift:(Math.random()-0.5)*(match.weather.id==='snow'?0.6:0.2),
+    }));
+  }
+  return match._weatherParticles;
+}
+function drawWeather(ctx){
+  const w = match.weather.id;
+  if(w==='night'){
+    ctx.fillStyle='rgba(4,7,18,0.38)'; ctx.fillRect(0,0,FIELD_W,FIELD_H);
+  }
+  if(w==='rain' || w==='storm'){
+    const particles = ensureWeatherParticles();
+    ctx.strokeStyle='rgba(200,220,255,0.35)'; ctx.lineWidth=1.4;
+    particles.forEach(p=>{
+      p.y+=p.v; p.x+=p.drift;
+      if(p.y>FIELD_H){ p.y=-10; p.x=Math.random()*FIELD_W; }
+      ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x-3,p.y-10); ctx.stroke();
+    });
+    if(w==='storm'){
+      ctx.fillStyle='rgba(10,14,28,0.18)'; ctx.fillRect(0,0,FIELD_W,FIELD_H);
+      match._lightningTimer = (match._lightningTimer||0) - 1;
+      if(match._lightningTimer<=0 && Math.random()<0.01){ match._lightningTimer=90; match._lightningFlash=6; }
+      if(match._lightningFlash>0){ ctx.fillStyle=`rgba(255,255,255,${match._lightningFlash*0.06})`; ctx.fillRect(0,0,FIELD_W,FIELD_H); match._lightningFlash--; }
+    }
+  }
+  if(w==='snow'){
+    const particles = ensureWeatherParticles();
+    ctx.fillStyle='rgba(255,255,255,0.85)';
+    particles.forEach(p=>{
+      p.y+=p.v; p.x+=p.drift;
+      if(p.y>FIELD_H){ p.y=-6; p.x=Math.random()*FIELD_W; }
+      ctx.beginPath(); ctx.arc(p.x,p.y,2,0,Math.PI*2); ctx.fill();
+    });
+  }
+  if(w==='fog'){
+    const grad = ctx.createRadialGradient(FIELD_W/2,FIELD_H/2,80, FIELD_W/2,FIELD_H/2,520);
+    grad.addColorStop(0,'rgba(200,205,215,0.05)'); grad.addColorStop(1,'rgba(200,205,215,0.38)');
+    ctx.fillStyle=grad; ctx.fillRect(0,0,FIELD_W,FIELD_H);
+  }
+}
 function drawCube(ctx, e, fill, edge, label, isYou){
   ctx.save();
   ctx.translate(e.x,e.y);
@@ -1303,6 +1384,10 @@ function endMatch(forfeited){
 
   const levelUps = grantXP(xp, match.perf);
 
+  let wonEnvelope = null;
+  if(outcome==='Victoria' && !neverPlayed) wonEnvelope = rollEnvelopeRarity();
+  else if(outcome==='Empate' && !neverPlayed && Math.random()<0.35) wonEnvelope = rollEnvelopeRarity();
+
   state.matchday++;
   let seasonEnded=false;
   if(state.matchday>state.schedule.length){
@@ -1310,7 +1395,53 @@ function endMatch(forfeited){
   }
 
   save();
-  showResultModal(outcome, xp, levelUps, seasonEnded);
+  showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope);
+}
+
+/* ---- envelopes ---- */
+function rollEnvelopeRarity(){
+  const total = RARITY_WEIGHTS.reduce((s,[,w])=>s+w,0);
+  let r = Math.random()*total;
+  for(const [rarity,w] of RARITY_WEIGHTS){ if(r<w) return rarity; r-=w; }
+  return 'common';
+}
+function pickCosmeticForRarity(rarity){
+  const pool = ALL_COSMETICS.filter(i=>i.rarity===rarity);
+  if(!pool.length) return null;
+  return pool[Math.floor(Math.random()*pool.length)];
+}
+function openEnvelopeSequence(rarity, onDone){
+  const item = pickCosmeticForRarity(rarity);
+  const alreadyOwned = item && state.unlocked[item.field].includes(item.id);
+  const bonusXP = alreadyOwned ? ({common:8,rare:14,epic:24,legendary:40,mythic:65,secret:100,divine:150,forbidden:250}[rarity] || 10) : 0;
+  const revealDelays = {common:300,rare:500,epic:800,legendary:1200,mythic:1500,secret:1800,divine:2200,forbidden:2800};
+  openModal(`
+    <h3>🎁 Sobre Cube</h3>
+    <div class="capsule-stage"><div class="capsule-box" id="envBox" style="background:none;box-shadow:none;">✉️</div></div>
+    <div id="envResult" style="min-height:20px;"></div>
+    <div style="margin-top:14px;"><button class="btn big" id="envContinueBtn" style="width:100%;" disabled>Abriendo...</button></div>
+  `);
+  const box=document.getElementById('envBox');
+  setTimeout(()=>box.classList.add('shaking'), 150);
+  setTimeout(()=>{
+    box.classList.remove('shaking'); box.classList.add('burst');
+    box.textContent = RARITY_ICONS[rarity] || '🎁';
+    const c = RARITY_COLOR[rarity] || '#34e0a1';
+    box.style.background = `radial-gradient(circle, ${c}cc, ${c}33)`;
+    box.style.boxShadow = `0 0 34px ${c}aa`;
+    const resHost = document.getElementById('envResult');
+    if(item){
+      const row=document.createElement('div'); row.className='item-card'; row.setAttribute('data-rarity',rarity); row.style.padding='14px';
+      row.innerHTML = `<div style="font-weight:800;font-size:14px;">${item.label}</div><span class="rarity-tag rarity-${rarity}">${rarityLabel(rarity)}</span>${alreadyOwned?`<div style="margin-top:8px;font-size:12px;color:var(--muted);">Ya lo tenías — convertido en <b style="color:var(--accent);">+${bonusXP} XP</b></div>`:''}`;
+      resHost.appendChild(row);
+      if(!alreadyOwned) state.unlocked[item.field].push(item.id);
+      else state.xp += bonusXP;
+    } else {
+      resHost.innerHTML = `<div class="sub">Sobre vacío esta vez.</div>`;
+    }
+    const btn=document.getElementById('envContinueBtn'); btn.disabled=false; btn.textContent='Aceptar';
+    btn.onclick=()=>{ closeModal(); save(); onDone && onDone(); };
+  }, 350 + (revealDelays[rarity]||500));
 }
 
 function simulateOtherMatches(){
@@ -1404,10 +1535,10 @@ function maybeGenerateTransferOffer(){
   });
 }
 
-function showResultModal(outcome, xp, levelUps, seasonEnded){
+function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope){
   const banner = outcome==='Victoria'?'🏆':(outcome==='Empate'?'🤝':'💔');
   let html = `<h3>${banner} ${outcome}</h3>
-    <div class="sub" style="margin:4px 0 14px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${CLUBS[match.rivalIdx].name}</div>
+    <div class="sub" style="margin:4px 0 14px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${CLUBS[match.rivalIdx].name} · ${match.weather.icon} ${match.weather.label}</div>
     <div class="stat-mini-grid">
       <div class="mini-stat"><div class="v">${match.perf.goals}</div><div class="k">Goles</div></div>
       <div class="mini-stat"><div class="v">${match.perf.assists}</div><div class="k">Asistencias</div></div>
@@ -1420,6 +1551,7 @@ function showResultModal(outcome, xp, levelUps, seasonEnded){
   else if(match.playerBenched && match.subDecided) roleNote='🔄 El entrenador te sacó antes del final.';
   else if(!match.playerBenched && match.subDecided) roleNote='🔥 Entraste desde el banquillo.';
   if(roleNote) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3);font-size:13px;">${roleNote}</div>`;
+  if(wonEnvelope) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(168,85,247,0.14);border:1px solid rgba(168,85,247,0.35);font-size:13px;">🎁 Has ganado un Sobre Cube (${rarityLabel(wonEnvelope)}) — se abrirá al continuar.</div>`;
   if(seasonEnded) html += `<div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">📅 Temporada finalizada — revisa tu buzón. Empieza la Temporada ${state.season}.</div>`;
   html += `<div style="margin-top:18px;"><button class="btn big" id="resultContinueBtn" style="width:100%;">Continuar</button></div>`;
   openModal(html);
@@ -1428,7 +1560,9 @@ function showResultModal(outcome, xp, levelUps, seasonEnded){
     document.getElementById('match-wrap').classList.remove('active');
     document.getElementById('hq-wrap').classList.remove('hidden');
     renderAll();
-    if(levelUps && levelUps.length){ playLevelUpSequence(levelUps, 0); }
+    const afterEnvelope = ()=>{ if(levelUps && levelUps.length) playLevelUpSequence(levelUps, 0); };
+    if(wonEnvelope) openEnvelopeSequence(wonEnvelope, afterEnvelope);
+    else afterEnvelope();
   };
 }
 
