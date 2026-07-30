@@ -299,7 +299,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v3 — partido jugable (ordenador o móvil) + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón.</div>
+    <div class="footer-note">Cube League: Career · v4 — partido jugable (ordenador o móvil) + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. Defensa/regate avanzados y modo multijugador real llegarán más adelante.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -377,6 +377,49 @@ const CLUBS = [
 const BENCH_NAMES = ['Nova','Rex','Blitz','Orion','Kade','Zeta','Milo','Vex','Draco','Luma'];
 const FORM_BENCH_THRESHOLD = 40;
 
+/* ---- Copa Cube ---- */
+const CUP_FILLER_TEAMS = [
+  {name:'Cyber Rovers', color:'#22d3ee', power:64},
+  {name:'Arena FC',     color:'#f472b6', power:67},
+];
+const CUP_STAGES = ['quarterfinal','semifinal','final'];
+const CUP_STAGE_LABEL = {quarterfinal:'Cuartos de final', semifinal:'Semifinal', final:'Final'};
+function cupStageIndex(stage){ return Math.max(0, CUP_STAGES.indexOf(stage)); }
+function cupOpponentPool(){
+  const clubOpponents = CLUBS.map((c,i)=> i===state.clubIdx ? null : {name:c.name, color:c.color, power:c.power}).filter(Boolean);
+  return [...clubOpponents, ...CUP_FILLER_TEAMS];
+}
+function makeCup(season){
+  return { season, stage:'quarterfinal', opponent:null, eliminated:false, champion:false, facedNames:[] };
+}
+function prepareCupOpponent(){
+  if(state.cup.opponent) return;
+  const pool = cupOpponentPool().filter(o=>!state.cup.facedNames.includes(o.name));
+  const source = pool.length ? pool : cupOpponentPool();
+  state.cup.opponent = source[Math.floor(Math.random()*source.length)];
+  save();
+}
+
+/* ---- season goals ---- */
+function makeSeasonGoals(){
+  return [
+    {id:'goals', label:'Marcar 15 goles en la temporada', type:'goals', target:15, progress:0, done:false, reward:120},
+    {id:'assists', label:'Dar 10 asistencias en la temporada', type:'assists', target:10, progress:0, done:false, reward:100},
+    {id:'winLeague', label:'Ganar la Liga Cube', type:'champion', target:1, progress:0, done:false, reward:300},
+  ];
+}
+function checkSeasonGoals(){
+  state.seasonGoals.forEach(g=>{
+    if(g.done || g.type==='champion') return;
+    g.progress = state.seasonStats[g.type] || 0;
+    if(g.progress>=g.target){
+      g.done=true;
+      state.xp += g.reward;
+      addMail(`🎯 Objetivo cumplido: ${g.label}`, `Has completado el objetivo de temporada y ganado ${g.reward} XP extra.`, 'Objetivo');
+    }
+  });
+}
+
 const COLOR_ITEMS = [
   {id:'blue', label:'Azul Cube', rarity:'common', hex:'#38bdf8', unlockLevel:1},
   {id:'red', label:'Rojo Fuego', rarity:'common', hex:'#ef4463', unlockLevel:1},
@@ -438,13 +481,16 @@ function freshState(){
     stats: { velocidad:58, tiro:55, pase:56, regate:57, defensa:50, fisico:55 },
     equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump' },
     unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'] },
-    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0 },
+    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0, cupTrophies:0 },
     form: 55,
     season: 1, matchday: 1,
     schedule: null, table: null,
     mail: [],
     settings: { controlMode: 'desktop' },
     squad: { bench: generateBench() },
+    cup: makeCup(1),
+    seasonGoals: makeSeasonGoals(),
+    seasonStats: { goals:0, assists:0, recoveries:0 },
   };
 }
 function generateBench(){
@@ -514,6 +560,10 @@ async function init(){
   if(state.form===undefined || state.form===null) state.form = 55;
   if(!state.settings) state.settings = { controlMode:'desktop' };
   if(!state.squad || !state.squad.bench) state.squad = { bench: generateBench() };
+  if(!state.cup || state.cup.season!==state.season) state.cup = makeCup(state.season);
+  if(!state.seasonGoals) state.seasonGoals = makeSeasonGoals();
+  if(!state.seasonStats) state.seasonStats = { goals:0, assists:0, recoveries:0 };
+  if(state.career.cupTrophies===undefined) state.career.cupTrophies = 0;
   if(!state.schedule){ state.schedule = generateSchedule(); }
   if(!state.table){ state.table = makeTable(); }
   if(!state.mail || !state.mail.length){
@@ -563,6 +613,33 @@ function formInfo(){
   else { label='🟢 Titular indiscutible'; sub='El entrenador confía plenamente en ti.'; roleLabel='Titular'; roleColor='var(--accent)'; }
   return {f,color,label,sub,roleLabel,roleColor};
 }
+function cupCardHtml(){
+  if(state.cup.champion){
+    return `<div class="card"><h2>🏆 Copa Cube</h2><div class="sub">¡Eres el campeón de la Copa Cube de la Temporada ${state.season}! Vuelve a intentarlo la próxima temporada.</div></div>`;
+  }
+  if(state.cup.eliminated){
+    return `<div class="card"><h2>Copa Cube</h2><div class="sub">Quedaste eliminado en ${CUP_STAGE_LABEL[state.cup.stage]} esta temporada. La Liga sigue en juego.</div></div>`;
+  }
+  const opp = state.cup.opponent;
+  return `<div class="card">
+    <h2>Copa Cube — ${CUP_STAGE_LABEL[state.cup.stage]}</h2>
+    <div class="sub">${opp ? `Rival: <b>${opp.name}</b>` : 'El rival se sortea al entrar al partido.'}</div>
+    <button class="btn secondary" id="playCupBtn">🏆 Jugar Copa Cube</button>
+  </div>`;
+}
+function seasonGoalsCardHtml(){
+  const rows = state.seasonGoals.map(g=>{
+    const pct = g.type==='champion' ? (g.done?100:0) : Math.min(100,(g.progress/g.target)*100);
+    const right = g.type==='champion' ? (g.done?'Cumplido':'Pendiente') : `${g.progress}/${g.target}`;
+    return `<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;margin-bottom:4px;">
+        <span>${g.done?'✅ ':''}${g.label}</span><span style="color:var(--muted);">${right}</span>
+      </div>
+      <div class="xpbar-outer" style="height:8px;"><div class="xpbar-inner" style="width:${pct}%;background:${g.done?'var(--accent)':'var(--accent2)'}"></div></div>
+    </div>`;
+  }).join('');
+  return `<div class="card"><h2>Objetivos de temporada</h2><div class="sub">Se renuevan cada temporada nueva.</div>${rows}</div>`;
+}
 function renderInicio(){
   const el=document.getElementById('tab-inicio');
   const fixture = currentFixture();
@@ -589,6 +666,8 @@ function renderInicio(){
       </div>
       <div class="ticker"><span>${tickerText()}</span></div>
     </div>
+    ${cupCardHtml()}
+    ${seasonGoalsCardHtml()}
     <div class="card">
       <h2>Forma con el entrenador</h2>
       <div class="sub">${fi.sub}</div>
@@ -603,12 +682,15 @@ function renderInicio(){
         <div class="mini-stat"><div class="v">${state.career.assists}</div><div class="k">Asistencias</div></div>
         <div class="mini-stat"><div class="v">${state.career.recoveries}</div><div class="k">Recuperaciones</div></div>
         <div class="mini-stat"><div class="v">${state.career.matches}</div><div class="k">Partidos</div></div>
-        <div class="mini-stat"><div class="v">${state.career.trophies}</div><div class="k">Títulos 🏆</div></div>
+        <div class="mini-stat"><div class="v">${state.career.trophies}</div><div class="k">Ligas 🏆</div></div>
+        <div class="mini-stat"><div class="v">${state.career.cupTrophies}</div><div class="k">Copas 🏆</div></div>
         <div class="mini-stat"><div class="v">${overall(s)}</div><div class="k">OVR actual</div></div>
       </div>
     </div>
   `;
-  document.getElementById('playMatchBtn').onclick = startMatch;
+  document.getElementById('playMatchBtn').onclick = ()=>startMatch('league');
+  const cupBtn=document.getElementById('playCupBtn');
+  if(cupBtn) cupBtn.onclick = ()=>{ prepareCupOpponent(); startMatch('cup'); };
 }
 function currentFixture(){
   const round = state.schedule[state.matchday-1];
@@ -870,7 +952,7 @@ function openPauseModal(){
   const statusLine = match.player.userControlled
     ? '✅ Estás en el campo.'
     : `🪑 Estás en el banquillo — ${match.playerBenched && match.subDecided ? 'el entrenador te sacó' : 'juega ' + match.standIn.name + ' en tu lugar'}.`;
-  openModal(`<h3>Partido en pausa</h3><div class="sub" style="margin-top:6px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${CLUBS[match.rivalIdx].name}</div>
+  openModal(`<h3>Partido en pausa</h3><div class="sub" style="margin-top:6px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${match.rival.name}</div>
     <div class="sub" style="margin-top:4px;">${statusLine} Las decisiones de cambio las toma el entrenador, no tú.</div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
       <button class="btn secondary" id="resumeBtn" style="flex:1;">Reanudar</button>
@@ -968,14 +1050,21 @@ function bindMobileControls(){
   kickBtn.addEventListener('touchcancel', ()=>{ touchInput.kick=false; kickBtn.classList.remove('pressed'); });
 }
 
-function startMatch(){
-  const fixture = currentFixture();
+function startMatch(mode){
+  const isCup = mode==='cup';
   const s = state.stats;
-  const weather = weatherForMatchday(state.season, state.matchday);
+  let rivalIdx=null, rival, isHome=true;
+  if(isCup){
+    rival = state.cup.opponent;
+  } else {
+    const fixture = currentFixture();
+    rivalIdx = fixture.rivalIdx; rival = CLUBS[fixture.rivalIdx]; isHome = fixture.isHome;
+  }
+  const weather = weatherForMatchday(state.season, isCup ? 200+cupStageIndex(state.cup.stage) : state.matchday);
   const maxSpeed = (2.5 + (s.velocidad/99)*2.3) * (WEATHER_SPEED_MUL[weather.id] ?? 1);
   const startAsSub = state.form < FORM_BENCH_THRESHOLD;
   match = {
-    rivalIdx: fixture.rivalIdx, isHome: fixture.isHome, weather,
+    isCup, rivalIdx, rival, isHome, weather,
     scoreA:0, scoreB:0, timeLeft:92, paused:false, ended:false,
     lastToucher:null, lastToucherPrevGoalTeam:null,
     turbo:100, chargeStart:0, charging:false, facing:{x:1,y:0},
@@ -1005,7 +1094,7 @@ function startMatch(){
     ? 'Joystick para moverte · ⚽ mantén pulsado para cargar el disparo/pase · ⚡ para turbo'
     : 'Mover: WASD / Flechas · Mantén ESPACIO para cargar el disparo/pase, suelta para golpear · MAYÚS para turbo';
   document.getElementById('hudHome').textContent = CLUBS[state.clubIdx].name;
-  document.getElementById('hudAway').textContent = CLUBS[fixture.rivalIdx].name;
+  document.getElementById('hudAway').textContent = rival.name;
   document.getElementById('hudScore').textContent = '0 - 0';
   document.getElementById('hudWeather').textContent = `${weather.icon} ${weather.label}`;
   document.getElementById('goalBanner').classList.remove('show');
@@ -1107,7 +1196,7 @@ function tryKick(entity, powerRatio, aimOverride){
 function registerTouch(entity){
   const team = entity.team;
   if(match.lastToucher && match.lastToucher.team!==team && team==='me' && entity.id!=='gkMe'){
-    if(entity.id==='you' && entity.userControlled) match.perf.recoveries++, state.career.recoveries++;
+    if(entity.id==='you' && entity.userControlled){ match.perf.recoveries++; state.career.recoveries++; state.seasonStats.recoveries++; }
   }
   match.prevToucher = match.lastToucher;
   match.lastToucher = entity;
@@ -1223,8 +1312,8 @@ function onGoal(team){
   const banner=document.getElementById('goalBanner');
   if(team==='me'){
     match.scoreA++;
-    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; }
-    else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; }
+    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; }
+    else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; state.seasonStats.assists++; }
     banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
   } else {
     match.scoreB++;
@@ -1281,8 +1370,8 @@ function drawMatch(){
 
   drawCube(ctx, match.gkMe, colorHex(state.equipped.color)+'55', '#ffffff', 'PT');
   match.mates.forEach(m=>drawCube(ctx, m, CLUBS[state.clubIdx].color+'aa', '#0a0e1a', ''));
-  match.opps.forEach(o=>drawCube(ctx, o, CLUBS[match.rivalIdx].color, '#0a0e1a', ''));
-  drawCube(ctx, match.gkOpp, CLUBS[match.rivalIdx].color+'55', '#ffffff', 'PT');
+  match.opps.forEach(o=>drawCube(ctx, o, match.rival.color, '#0a0e1a', ''));
+  drawCube(ctx, match.gkOpp, match.rival.color+'55', '#ffffff', 'PT');
   if(match.player.userControlled){
     drawCube(ctx, match.player, colorHex(state.equipped.color), colorHex(state.equipped.secondary), '', true);
   } else {
@@ -1362,6 +1451,8 @@ function endMatch(forfeited){
   clearInterval(match._timerInterval);
   if(forfeited) match.scoreB = Math.max(match.scoreB, match.scoreA+1);
 
+  if(match.isCup){ return endCupMatch(forfeited); }
+
   applyResultToTable(state.table, state.clubIdx, match.rivalIdx, match.scoreA, match.scoreB);
   simulateOtherMatches();
 
@@ -1379,7 +1470,7 @@ function endMatch(forfeited){
   else if(match.playerBenched && match.subDecided) roleNote = ' El entrenador decidió sacarte del campo antes del final.';
   else if(!match.playerBenched && match.subDecided) roleNote = ' Entraste desde el banquillo y dejaste tu huella.';
 
-  addMail(`Resultado: ${CLUBS[state.clubIdx].name} ${match.scoreA}-${match.scoreB} ${CLUBS[match.rivalIdx].name}`,
+  addMail(`Resultado: ${CLUBS[state.clubIdx].name} ${match.scoreA}-${match.scoreB} ${match.rival.name}`,
     `${outcome}. Contribuiste con ${match.perf.goals} gol(es), ${match.perf.assists} asistencia(s) y ${match.perf.recoveries} recuperación(es). Ganaste ${xp} XP.${roleNote}`, 'Resultado');
 
   const levelUps = grantXP(xp, match.perf);
@@ -1387,6 +1478,8 @@ function endMatch(forfeited){
   let wonEnvelope = null;
   if(outcome==='Victoria' && !neverPlayed) wonEnvelope = rollEnvelopeRarity();
   else if(outcome==='Empate' && !neverPlayed && Math.random()<0.35) wonEnvelope = rollEnvelopeRarity();
+
+  checkSeasonGoals();
 
   state.matchday++;
   let seasonEnded=false;
@@ -1396,6 +1489,47 @@ function endMatch(forfeited){
 
   save();
   showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope);
+}
+
+/* ---- Copa Cube match resolution ---- */
+function endCupMatch(forfeited){
+  const neverPlayed = match.playerBenched && !match.subDecided;
+  let xp = neverPlayed ? 4 : 20 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  let outcome='Empate';
+  if(match.scoreA>match.scoreB){ outcome='Victoria'; }
+  else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
+  updateForm(outcome);
+
+  const won = match.scoreA>match.scoreB || (match.scoreA===match.scoreB && Math.random()<0.5);
+  const stage = state.cup.stage;
+  state.cup.facedNames.push(match.rival.name);
+
+  let cupNote='';
+  if(won){
+    xp += 30;
+    if(stage==='final'){
+      state.cup.champion = true;
+      state.career.cupTrophies++;
+      addMail('🏆 ¡CAMPEÓN DE LA COPA CUBE!', `Has ganado la Copa Cube esta temporada tras superar a ${match.rival.name} en la final. Un trofeo más en la vitrina.`, 'Trofeo');
+      cupNote = '🏆 ¡Eres el campeón de la Copa Cube!';
+    } else {
+      const nextStage = CUP_STAGES[cupStageIndex(stage)+1];
+      state.cup.stage = nextStage; state.cup.opponent = null;
+      addMail(`Pasas a ${CUP_STAGE_LABEL[nextStage]} de la Copa Cube`, `Superaste a ${match.rival.name} (${match.scoreA}-${match.scoreB}${match.scoreA===match.scoreB?', penaltis':''}) y avanzas en la Copa Cube.`, 'Copa');
+      cupNote = `➡️ Avanzas a ${CUP_STAGE_LABEL[nextStage]}.`;
+    }
+  } else {
+    state.cup.eliminated = true;
+    addMail(`Eliminado de la Copa Cube`, `${match.rival.name} te elimina en ${CUP_STAGE_LABEL[stage]} (${match.scoreA}-${match.scoreB}). Queda la Liga por pelear esta temporada.`, 'Copa');
+    cupNote = `❌ Eliminado en ${CUP_STAGE_LABEL[stage]}.`;
+  }
+
+  const levelUps = grantXP(xp, match.perf);
+  let wonEnvelope = null;
+  if(won) wonEnvelope = rollEnvelopeRarity();
+  checkSeasonGoals();
+  save();
+  showResultModal(outcome, xp, levelUps, false, wonEnvelope, cupNote);
 }
 
 /* ---- envelopes ---- */
@@ -1505,12 +1639,17 @@ function finishSeason(){
   const youPos = rows.findIndex(r=>r.idx===state.clubIdx)+1;
   if(champ.idx===state.clubIdx){
     state.career.trophies++;
+    const goal = state.seasonGoals.find(g=>g.type==='champion');
+    if(goal && !goal.done){ goal.done=true; state.xp += goal.reward; }
     addMail(`🏆 ¡CAMPEÓN DE LIGA!`, `Has llevado al ${CLUBS[state.clubIdx].name} a ganar la Liga Cube en la Temporada ${state.season}. La afición celebra por todo lo alto.`, 'Trofeo');
   } else {
     addMail(`Fin de temporada — ${champ.name} campeón`, `Terminaste la Temporada ${state.season} en la posición ${youPos} con el ${CLUBS[state.clubIdx].name}. Nueva temporada, nuevo objetivo: el título.`, 'Liga');
   }
   maybeGenerateTransferOffer();
   state.season++; state.matchday=1; state.table=makeTable(); state.schedule=generateSchedule();
+  state.cup = makeCup(state.season);
+  state.seasonGoals = makeSeasonGoals();
+  state.seasonStats = { goals:0, assists:0, recoveries:0 };
 }
 
 function maybeGenerateTransferOffer(){
@@ -1535,10 +1674,10 @@ function maybeGenerateTransferOffer(){
   });
 }
 
-function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope){
+function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope, cupNote){
   const banner = outcome==='Victoria'?'🏆':(outcome==='Empate'?'🤝':'💔');
-  let html = `<h3>${banner} ${outcome}</h3>
-    <div class="sub" style="margin:4px 0 14px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${CLUBS[match.rivalIdx].name} · ${match.weather.icon} ${match.weather.label}</div>
+  let html = `<h3>${banner} ${outcome}${match.isCup?' · Copa Cube':''}</h3>
+    <div class="sub" style="margin:4px 0 14px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${match.rival.name} · ${match.weather.icon} ${match.weather.label}</div>
     <div class="stat-mini-grid">
       <div class="mini-stat"><div class="v">${match.perf.goals}</div><div class="k">Goles</div></div>
       <div class="mini-stat"><div class="v">${match.perf.assists}</div><div class="k">Asistencias</div></div>
@@ -1551,6 +1690,7 @@ function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope){
   else if(match.playerBenched && match.subDecided) roleNote='🔄 El entrenador te sacó antes del final.';
   else if(!match.playerBenched && match.subDecided) roleNote='🔥 Entraste desde el banquillo.';
   if(roleNote) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3);font-size:13px;">${roleNote}</div>`;
+  if(cupNote) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">${cupNote}</div>`;
   if(wonEnvelope) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(168,85,247,0.14);border:1px solid rgba(168,85,247,0.35);font-size:13px;">🎁 Has ganado un Sobre Cube (${rarityLabel(wonEnvelope)}) — se abrirá al continuar.</div>`;
   if(seasonEnded) html += `<div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">📅 Temporada finalizada — revisa tu buzón. Empieza la Temporada ${state.season}.</div>`;
   html += `<div style="margin-top:18px;"><button class="btn big" id="resultContinueBtn" style="width:100%;">Continuar</button></div>`;
