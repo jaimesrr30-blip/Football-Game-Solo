@@ -1,0 +1,1141 @@
+<title>Cube League: Career</title>
+<style>
+:root{
+  --bg:#0a0e1a; --bg2:#0d1326; --panel:rgba(20,26,48,0.72); --panel-solid:#141a30;
+  --border:rgba(255,255,255,0.08); --text:#eef1fb; --muted:#8a93b8;
+  --accent:#34e0a1; --accent2:#38bdf8; --gold:#f5b942; --danger:#ef4463;
+  --rare:#3B82F6; --epic:#A855F7; --legendary:#F59E0B; --mythic:#EF4444; --divine:#FFFFFF; --forbidden:#ff2fb0;
+  color-scheme: dark;
+}
+:root[data-theme="light"]{ --bg:#eef1fb; --bg2:#e3e8fb; --panel:rgba(255,255,255,0.75); --panel-solid:#ffffff; --border:rgba(20,26,48,0.1); --text:#141a30; --muted:#5a6288; }
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; font-family:'Segoe UI',system-ui,-apple-system,sans-serif; color:var(--text);
+  background:
+    radial-gradient(circle at 15% 10%, rgba(52,224,161,0.10), transparent 45%),
+    radial-gradient(circle at 85% 90%, rgba(56,189,248,0.10), transparent 45%),
+    var(--bg);
+  min-height:100vh; overflow-x:hidden;
+}
+.app{ max-width:1180px; margin:0 auto; padding:18px 16px 60px; }
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;}
+
+/* ---------- top bar ---------- */
+.topbar{
+  display:flex; align-items:center; gap:16px; padding:14px 18px; border-radius:18px;
+  background:var(--panel); border:1px solid var(--border); backdrop-filter: blur(14px);
+  box-shadow:0 8px 30px rgba(0,0,0,0.25);
+}
+.crest{
+  width:52px;height:52px;border-radius:14px;flex:none;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;color:#04150f;
+  box-shadow:0 0 20px rgba(52,224,161,0.5);
+}
+.topbar .who{flex:1;min-width:0;}
+.topbar .who .name{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;}
+.topbar .who .club{color:var(--muted);font-size:12.5px;margin-top:2px;}
+.xpwrap{width:220px;flex:none;}
+.xpbar-outer{height:10px;border-radius:6px;background:rgba(255,255,255,0.08);overflow:hidden;border:1px solid var(--border);}
+.xpbar-inner{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s cubic-bezier(.2,.9,.3,1);}
+.xplabel{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;}
+.lvl-badge{
+  width:40px;height:40px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+  background:var(--panel-solid); border:2px solid var(--gold); font-weight:900; font-size:14px; color:var(--gold);
+  box-shadow:0 0 14px rgba(245,185,66,0.4);
+}
+
+/* ---------- layout ---------- */
+.layout{display:flex;gap:16px;margin-top:16px;}
+.tabs{display:flex;flex-direction:column;gap:8px;width:190px;flex:none;}
+.tab-btn{
+  display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:14px;border:1px solid var(--border);
+  background:var(--panel); color:var(--text); cursor:pointer; font-size:14.5px; font-weight:600;
+  transition: all .18s ease; text-align:left; position:relative;
+}
+.tab-btn:hover{transform:translateX(3px); border-color:var(--accent2);}
+.tab-btn.active{ background:linear-gradient(135deg, rgba(52,224,161,0.18), rgba(56,189,248,0.12)); border-color:var(--accent); box-shadow:0 0 16px rgba(52,224,161,0.15);}
+.tab-btn .ico{font-size:18px;}
+.badge{
+  position:absolute; right:10px; top:8px; background:var(--danger); color:#fff; font-size:10.5px; font-weight:800;
+  min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;
+  box-shadow:0 0 8px rgba(239,68,99,0.7);
+}
+.content{flex:1;min-width:0;}
+.card{
+  background:var(--panel); border:1px solid var(--border); border-radius:18px; padding:20px;
+  backdrop-filter:blur(14px); box-shadow:0 8px 30px rgba(0,0,0,0.2); margin-bottom:16px;
+  animation: fadeUp .35s ease both;
+}
+@keyframes fadeUp{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+.card h2{margin:0 0 4px; font-size:17px;}
+.card .sub{color:var(--muted); font-size:12.5px; margin-bottom:14px;}
+
+/* ---------- buttons ---------- */
+button{ font-family:inherit; }
+.btn{
+  border:none; border-radius:12px; padding:12px 20px; font-weight:800; font-size:14px; cursor:pointer;
+  color:#04150f; background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 6px 18px rgba(52,224,161,0.35); transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.btn:hover{ transform:scale(1.045); box-shadow:0 8px 24px rgba(52,224,161,0.5); filter:brightness(1.06); }
+.btn:active{ transform:scale(0.96); }
+.btn.secondary{ background:var(--panel-solid); color:var(--text); border:1px solid var(--border); box-shadow:none; }
+.btn.secondary:hover{ border-color:var(--accent2); box-shadow:0 0 14px rgba(56,189,248,0.25); }
+.btn.danger{ background:linear-gradient(135deg,#ef4463,#ff7a8a); box-shadow:0 6px 18px rgba(239,68,99,0.35); color:#2a0410;}
+.btn:disabled{ opacity:.45; cursor:not-allowed; transform:none !important; filter:none !important; box-shadow:none !important; }
+.btn.big{ padding:16px 28px; font-size:16px; border-radius:16px; }
+.chip-btn{
+  border:1px solid var(--border); background:var(--panel-solid); color:var(--text); border-radius:10px;
+  padding:8px 12px; font-size:12.5px; font-weight:700; cursor:pointer; transition:.15s ease;
+}
+.chip-btn:hover{ transform:scale(1.05); border-color:var(--accent2); }
+.chip-btn.active{ border-color:var(--accent); background:rgba(52,224,161,0.15); color:var(--accent); }
+
+/* ---------- inicio ---------- */
+.next-match{ display:flex; align-items:center; gap:18px; flex-wrap:wrap; }
+.vs-block{ display:flex; align-items:center; gap:14px; flex:1; min-width:260px; }
+.team-pill{ display:flex; flex-direction:column; align-items:center; gap:6px; flex:1; }
+.team-pill .dot{width:46px;height:46px;border-radius:13px; box-shadow:0 0 16px currentColor;}
+.team-pill .tname{font-size:12.5px;font-weight:700; text-align:center;}
+.vs-text{font-weight:900; color:var(--muted); font-size:13px;}
+.ticker{
+  margin-top:14px; overflow:hidden; white-space:nowrap; border-top:1px solid var(--border); padding-top:10px;
+}
+.ticker span{ display:inline-block; padding-right:60px; color:var(--muted); font-size:12.5px; animation:scroll 22s linear infinite; }
+@keyframes scroll{ from{transform:translateX(0);} to{transform:translateX(-100%);} }
+.stat-mini-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+.mini-stat{ background:var(--panel-solid); border:1px solid var(--border); border-radius:12px; padding:10px 12px; text-align:center; }
+.mini-stat .v{font-size:20px;font-weight:900;color:var(--accent);}
+.mini-stat .k{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ---------- jugador ---------- */
+.player-head{display:flex; gap:20px; align-items:center; flex-wrap:wrap;}
+.big-cube-preview{ width:110px;height:110px;border-radius:26px; position:relative; flex:none; }
+.statbar-row{ display:flex; align-items:center; gap:10px; margin:9px 0; }
+.statbar-row .lab{width:92px; font-size:12.5px; font-weight:700; color:var(--muted); flex:none;}
+.statbar-row .track{flex:1; height:12px; border-radius:7px; background:rgba(255,255,255,0.07); overflow:hidden; border:1px solid var(--border);}
+.statbar-row .fill{height:100%; border-radius:7px; transition:width .8s cubic-bezier(.2,.9,.3,1);}
+.statbar-row .num{width:28px; text-align:right; font-weight:800; font-size:12.5px; flex:none;}
+.ovr-badge{ width:70px;height:70px;border-radius:16px; background:linear-gradient(135deg,var(--gold),#ffd98a); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#3a2500; font-weight:900; box-shadow:0 0 20px rgba(245,185,66,0.45); flex:none;}
+.ovr-badge .n{font-size:22px;line-height:1;}
+.ovr-badge .l{font-size:9px;}
+
+.custom-section-title{font-size:13px; font-weight:800; color:var(--muted); margin:16px 0 8px; text-transform:uppercase; letter-spacing:.4px;}
+.swatch-row{display:flex; flex-wrap:wrap; gap:10px;}
+.swatch{
+  width:44px;height:44px;border-radius:12px; cursor:pointer; position:relative; border:2px solid transparent;
+  transition: transform .15s ease; flex:none;
+}
+.swatch:hover{transform:scale(1.1);}
+.swatch.selected{ border-color:#fff; box-shadow:0 0 0 3px rgba(255,255,255,0.15); }
+.swatch.locked{ cursor:not-allowed; filter:grayscale(1) brightness(0.5); }
+.swatch .lock{position:absolute; inset:0; display:flex;align-items:center;justify-content:center; font-size:16px;}
+.item-card{ position:relative; padding:12px; border-radius:14px; background:var(--panel-solid); border:1px solid var(--border); cursor:pointer; overflow:hidden; }
+.item-card.locked{opacity:.5; cursor:not-allowed;}
+.item-card.selectedcard{ outline:2px solid var(--accent); }
+.rarity-tag{ font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; padding:2px 7px; border-radius:6px; display:inline-block; margin-top:6px;}
+.trail-grid, .celeb-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:10px; }
+
+/* rarity effects */
+.item-card[data-rarity="rare"]{ box-shadow:0 0 10px 1px var(--rare); }
+.item-card[data-rarity="epic"]{ box-shadow:0 0 14px 2px var(--epic); }
+.item-card[data-rarity="epic"]::after{ content:''; position:absolute; inset:0; background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.35) 50%,transparent 70%); transform:translateX(-100%); animation: shimmer-sweep 2.6s ease-in-out infinite; }
+.item-card[data-rarity="legendary"]{ animation:aura-pulse-l 1.8s ease-in-out infinite; }
+.item-card[data-rarity="mythic"]{ animation:aura-pulse-m 1.6s ease-in-out infinite; }
+.item-card[data-rarity="divine"]{ animation:aura-pulse-d 1.5s ease-in-out infinite; }
+.item-card[data-rarity="forbidden"]{ animation:aura-pulse-f 1.3s ease-in-out infinite; }
+@keyframes shimmer-sweep{ 0%,60%{transform:translateX(-100%);} 100%{transform:translateX(100%);} }
+@keyframes aura-pulse-l{ 0%,100%{box-shadow:0 0 16px 3px var(--legendary);} 50%{box-shadow:0 0 28px 8px var(--legendary);} }
+@keyframes aura-pulse-m{ 0%,100%{box-shadow:0 0 18px 3px var(--mythic);} 50%{box-shadow:0 0 32px 9px var(--mythic);} }
+@keyframes aura-pulse-d{ 0%,100%{box-shadow:0 0 22px 5px #fff;} 50%{box-shadow:0 0 40px 14px #fff;} }
+@keyframes aura-pulse-f{ 0%,100%{box-shadow:0 0 24px 6px var(--forbidden);} 50%{box-shadow:0 0 44px 16px var(--forbidden);} }
+.rarity-common{background:rgba(156,163,175,0.18); color:#c7cbd6;}
+.rarity-rare{background:rgba(59,130,246,0.18); color:#7db4ff;}
+.rarity-epic{background:rgba(168,85,247,0.2); color:#d3a4ff;}
+.rarity-legendary{background:rgba(245,158,11,0.2); color:#ffcd7a;}
+.rarity-mythic{background:rgba(239,68,68,0.2); color:#ff9c9c;}
+.rarity-divine{background:rgba(255,255,255,0.2); color:#fff;}
+.rarity-forbidden{background:rgba(255,47,176,0.22); color:#ff8fe0;}
+
+/* ---------- liga ---------- */
+table.league{width:100%; border-collapse:collapse; font-size:12.5px;}
+table.league th{ text-align:center; color:var(--muted); font-weight:700; padding:8px 6px; border-bottom:1px solid var(--border);}
+table.league td{ text-align:center; padding:9px 6px; border-bottom:1px solid var(--border); }
+table.league td.tname{ text-align:left; font-weight:700; display:flex; align-items:center; gap:8px; }
+table.league tr.me{ background:rgba(52,224,161,0.08); }
+table.league tr.me td.tname{ color:var(--accent); }
+.mini-dot{width:14px;height:14px;border-radius:4px; flex:none;}
+.pos-num{width:20px;display:inline-block;color:var(--muted);}
+
+/* ---------- buzon ---------- */
+.mail-item{ padding:14px; border-radius:14px; border:1px solid var(--border); background:var(--panel-solid); margin-bottom:10px; cursor:pointer; transition:.15s ease; }
+.mail-item:hover{ border-color:var(--accent2); }
+.mail-item.unread{ border-left:4px solid var(--accent); }
+.mail-item .mtitle{ font-weight:800; font-size:13.5px; display:flex; justify-content:space-between; gap:10px; }
+.mail-item .mtag{ font-size:10px; color:var(--muted); font-weight:600; }
+.mail-item .mbody{ font-size:12.5px; color:var(--muted); margin-top:6px; line-height:1.5; }
+.mail-item.unread .mbody{ color:var(--text); }
+.empty-hint{ color:var(--muted); font-size:13px; text-align:center; padding:24px 10px; }
+
+/* ---------- modal ---------- */
+.overlay{ position:fixed; inset:0; background:rgba(4,6,14,0.72); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:60; opacity:0; pointer-events:none; transition:opacity .25s ease; }
+.overlay.show{ opacity:1; pointer-events:auto; }
+.modal{ background:var(--panel-solid); border:1px solid var(--border); border-radius:20px; padding:26px; width:min(440px,92vw); box-shadow:0 20px 60px rgba(0,0,0,0.5); transform:scale(.9) translateY(10px); transition:transform .25s cubic-bezier(.2,.9,.3,1); max-height:86vh; overflow:auto; }
+.overlay.show .modal{ transform:scale(1) translateY(0); }
+.modal h3{margin:0 0 6px; font-size:19px;}
+.modal .close-x{ float:right; cursor:pointer; color:var(--muted); font-size:20px; }
+
+/* ---------- match screen ---------- */
+.match-wrap{ display:none; }
+.match-wrap.active{ display:block; }
+#hq-wrap.hidden{ display:none; }
+.match-hud{ display:flex; align-items:center; justify-content:space-between; padding:12px 16px; border-radius:16px; background:var(--panel); border:1px solid var(--border); margin-bottom:10px; backdrop-filter:blur(14px); flex-wrap:wrap; gap:10px;}
+.score-block{ display:flex; align-items:center; gap:12px; font-weight:900; font-size:22px; }
+.score-block .tag{font-size:11px; color:var(--muted); font-weight:700;}
+.timer-block{font-weight:900; font-size:20px; color:var(--gold); font-variant-numeric: tabular-nums;}
+.meters{ display:flex; gap:14px; }
+.meter{width:90px;}
+.meter .lab{font-size:9.5px; color:var(--muted); margin-bottom:3px;}
+.meter .track{height:8px;border-radius:5px;background:rgba(255,255,255,0.08); overflow:hidden;}
+.meter .fill{height:100%;}
+.field-wrap{ position:relative; border-radius:18px; overflow:hidden; border:1px solid var(--border); box-shadow:0 10px 40px rgba(0,0,0,0.4); }
+#matchCanvas{ display:block; width:100%; height:auto; background:#0e2f1f; }
+.controls-hint{ text-align:center; color:var(--muted); font-size:12px; margin-top:8px; }
+.flash{ position:absolute; inset:0; pointer-events:none; opacity:0; }
+.goal-banner{ position:absolute; top:40%; left:50%; transform:translate(-50%,-50%) scale(.5); opacity:0; font-size:44px; font-weight:900; color:var(--gold); text-shadow:0 0 30px rgba(245,185,66,0.8); pointer-events:none; transition:.3s ease; letter-spacing:2px;}
+.goal-banner.show{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+.pause-btn{ position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.5); color:#fff; border:none; border-radius:10px; width:36px;height:36px; font-size:15px; cursor:pointer; z-index:5;}
+
+/* capsule reveal */
+.capsule-stage{ text-align:center; padding:10px 0 4px; }
+.capsule-box{ width:90px;height:90px; margin:6px auto 14px; border-radius:20px; background:linear-gradient(135deg,var(--accent),var(--accent2)); display:flex; align-items:center; justify-content:center; font-size:38px; box-shadow:0 0 30px rgba(52,224,161,0.5); transition: transform .15s ease; }
+.capsule-box.shaking{ animation: shake .5s ease-in-out; }
+.capsule-box.burst{ animation: burst .4s ease-out; }
+@keyframes shake{ 0%,100%{transform:rotate(0);} 20%{transform:rotate(-8deg);} 40%{transform:rotate(8deg);} 60%{transform:rotate(-6deg);} 80%{transform:rotate(6deg);} }
+@keyframes burst{ 0%{transform:scale(1);} 50%{transform:scale(1.35); filter:brightness(1.6);} 100%{transform:scale(1);} }
+.reward-line{ display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:12px; background:var(--panel); border:1px solid var(--border); margin-bottom:8px; opacity:0; transform:translateY(6px); animation:revealIn .4s ease forwards; }
+@keyframes revealIn{ to{opacity:1; transform:translateY(0);} }
+
+/* toast */
+#toast-wrap{ position:fixed; bottom:18px; left:50%; transform:translateX(-50%); z-index:80; display:flex; flex-direction:column; gap:8px; align-items:center;}
+.toast{ background:var(--panel-solid); border:1px solid var(--border); padding:10px 18px; border-radius:12px; font-size:13px; font-weight:700; box-shadow:0 8px 24px rgba(0,0,0,0.35); animation: toastIn .3s ease, toastOut .3s ease 2.4s forwards; }
+@keyframes toastIn{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:translateY(0);} }
+@keyframes toastOut{ to{opacity:0; transform:translateY(-8px);} }
+
+.footer-note{ text-align:center; color:var(--muted); font-size:11px; margin-top:18px; }
+@media (max-width:760px){ .layout{flex-direction:column;} .tabs{width:100%; flex-direction:row; overflow-x:auto;} .tab-btn{flex:none;} }
+</style>
+
+<div class="app">
+
+  <div id="hq-wrap">
+    <div class="topbar">
+      <div class="crest">🟦</div>
+      <div class="who">
+        <div class="name" id="hdrName">Jugador —</div>
+        <div class="club" id="hdrClub">Club</div>
+      </div>
+      <div class="xpwrap">
+        <div class="xpbar-outer"><div class="xpbar-inner" id="xpFill" style="width:0%"></div></div>
+        <div class="xplabel"><span id="xpText">0 / 0 XP</span><span id="seasonText">Temporada 1</span></div>
+      </div>
+      <div class="lvl-badge" id="lvlBadge">1</div>
+    </div>
+
+    <div class="layout">
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="inicio"><span class="ico">🏠</span>Inicio</button>
+        <button class="tab-btn" data-tab="jugador"><span class="ico">🧊</span>Jugador</button>
+        <button class="tab-btn" data-tab="liga"><span class="ico">🏆</span>Liga</button>
+        <button class="tab-btn" data-tab="buzon"><span class="ico">📩</span>Buzón<span class="badge" id="mailBadge" style="display:none">0</span></button>
+      </div>
+
+      <div class="content">
+        <div id="tab-inicio" class="tabpane"></div>
+        <div id="tab-jugador" class="tabpane" style="display:none"></div>
+        <div id="tab-liga" class="tabpane" style="display:none"></div>
+        <div id="tab-buzon" class="tabpane" style="display:none"></div>
+      </div>
+    </div>
+    <div class="footer-note">Cube League: Career · v1 — bucle núcleo (partido jugable + progresión + liga + buzón). Fichajes, clima y cápsulas de sobre llegarán en capas futuras.</div>
+  </div>
+
+  <div id="match-wrap" class="match-wrap">
+    <div class="match-hud">
+      <div class="score-block">
+        <span id="hudHome">Estrellas</span>
+        <span id="hudScore">0 - 0</span>
+        <span id="hudAway">Rival</span>
+      </div>
+      <div class="timer-block" id="hudTimer">00:00</div>
+      <div class="meters">
+        <div class="meter"><div class="lab">TURBO</div><div class="track"><div class="fill" id="turboFill" style="width:100%;background:linear-gradient(90deg,var(--accent2),var(--accent))"></div></div></div>
+        <div class="meter"><div class="lab">POTENCIA</div><div class="track"><div class="fill" id="powerFill" style="width:0%;background:linear-gradient(90deg,var(--gold),var(--danger))"></div></div></div>
+      </div>
+    </div>
+    <div class="field-wrap">
+      <button class="pause-btn" id="pauseBtn">⏸</button>
+      <canvas id="matchCanvas" width="900" height="520"></canvas>
+      <div class="goal-banner" id="goalBanner">¡GOL!</div>
+    </div>
+    <div class="controls-hint">Mover: WASD / Flechas · Mantén ESPACIO para cargar el disparo/pase, suelta para golpear · MAYÚS para turbo</div>
+  </div>
+
+</div>
+
+<div id="toast-wrap"></div>
+<div class="overlay" id="overlay"><div class="modal" id="modalBody"></div></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ STORAGE ============ */
+const STORAGE_KEY = 'cubeLeagueCareer_v1';
+let memoryStore = {};
+async function storageGet(key){
+  try{ if(window.claude && window.claude.storage && window.claude.storage.get){ const v = await window.claude.storage.get(key); if(v!=null) return v; } }catch(e){}
+  try{ if(window.storage && window.storage.getItem){ const v = await window.storage.getItem(key); if(v!=null) return v; } }catch(e){}
+  try{ if(window.storage && window.storage.get){ const v = await window.storage.get(key); if(v!=null) return v; } }catch(e){}
+  return memoryStore[key] ?? null;
+}
+async function storageSet(key, value){
+  memoryStore[key] = value;
+  try{ if(window.claude && window.claude.storage && window.claude.storage.set){ await window.claude.storage.set(key, value); return; } }catch(e){}
+  try{ if(window.storage && window.storage.setItem){ await window.storage.setItem(key, value); return; } }catch(e){}
+  try{ if(window.storage && window.storage.set){ await window.storage.set(key, value); return; } }catch(e){}
+}
+
+/* ============ DATA ============ */
+const TEAM_NAMES = ['Estrellas Cube','Galaxy Cubes','Neon FC','Vórtice United','Pixel Rovers','Titanio SC'];
+const TEAM_COLORS = ['#34e0a1','#a855f7','#38bdf8','#f5b942','#ef4463','#fb923c'];
+const TEAM_POWER  = [70, 78, 71, 66, 69, 73]; // your team's own power unused (player-controlled)
+
+const COLOR_ITEMS = [
+  {id:'blue', label:'Azul Cube', rarity:'common', hex:'#38bdf8', unlockLevel:1},
+  {id:'red', label:'Rojo Fuego', rarity:'common', hex:'#ef4463', unlockLevel:1},
+  {id:'green', label:'Verde Neón', rarity:'common', hex:'#34e0a1', unlockLevel:1},
+  {id:'purple', label:'Violeta', rarity:'common', hex:'#a855f7', unlockLevel:1},
+  {id:'white', label:'Blanco', rarity:'common', hex:'#e5e9f5', unlockLevel:1},
+  {id:'sunset', label:'Naranja Atardecer', rarity:'rare', hex:'#fb923c', unlockLevel:2},
+  {id:'toxic', label:'Verde Tóxico', rarity:'epic', hex:'#a3ff12', unlockLevel:5},
+  {id:'galaxy', label:'Galaxia', rarity:'legendary', hex:'#7c3aed', unlockLevel:10},
+  {id:'divine', label:'Dorado Divino', rarity:'divine', hex:'#fff4cc', unlockLevel:20},
+];
+const TRAIL_ITEMS = [
+  {id:'none', label:'Sin estela', rarity:'common', unlockLevel:1},
+  {id:'spark', label:'Chispa', rarity:'common', unlockLevel:1},
+  {id:'trail_blue', label:'Estela Azul', rarity:'rare', unlockLevel:3},
+  {id:'trail_fire', label:'Estela de Fuego', rarity:'legendary', unlockLevel:8},
+  {id:'trail_void', label:'Estela del Vacío', rarity:'mythic', unlockLevel:16},
+];
+const CELEB_ITEMS = [
+  {id:'jump', label:'Salto Básico', rarity:'common', unlockLevel:1},
+  {id:'clap', label:'Aplauso', rarity:'common', unlockLevel:1},
+  {id:'backflip', label:'Salto Mortal', rarity:'epic', unlockLevel:6},
+  {id:'eclipse', label:'Celebración Eclipse', rarity:'mythic', unlockLevel:13},
+  {id:'forbidden', label:'Explosión Prohibida', rarity:'forbidden', unlockLevel:25},
+];
+const LEVEL_UNLOCK_ANNOUNCE = {2:'sunset',3:'trail_blue',5:'toxic',6:'backflip',8:'trail_fire',10:'galaxy',13:'eclipse',16:'trail_void',20:'divine',25:'forbidden'};
+
+/* ============ STATE ============ */
+let state = null;
+
+function freshState(){
+  return {
+    playerName: 'Jaime_77',
+    club: TEAM_NAMES[0],
+    level: 1, xp: 0,
+    stats: { velocidad:58, tiro:55, pase:56, regate:57, defensa:50, fisico:55 },
+    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump' },
+    unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'] },
+    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0 },
+    season: 1, matchday: 1,
+    schedule: null, table: null,
+    mail: [],
+    pendingLevelUps: [],
+  };
+}
+
+function xpToNext(level){ return Math.round(90 * Math.pow(1.13, level-1)); }
+function overall(s){ const v=(s.velocidad+s.tiro+s.pase+s.regate+s.defensa+s.fisico)/6; return Math.round(v); }
+
+function makeTable(){
+  return TEAM_NAMES.map((name,i)=>({name, idx:i, pj:0,pg:0,pe:0,pp:0,gf:0,gc:0,pts:0}));
+}
+function generateSchedule(){
+  const teams=[0,1,2,3,4,5]; const n=teams.length; const rounds=[];
+  const fixed=teams[0]; let arr=teams.slice(1);
+  for(let r=0;r<n-1;r++){
+    const roundTeams=[fixed,...arr]; const round=[];
+    for(let i=0;i<n/2;i++){
+      const home=roundTeams[i], away=roundTeams[n-1-i];
+      round.push(r%2===0?[home,away]:[away,home]);
+    }
+    rounds.push(round);
+    arr.push(arr.shift());
+  }
+  const secondLeg = rounds.map(rd=>rd.map(([h,a])=>[a,h]));
+  return [...rounds, ...secondLeg];
+}
+
+function addMail(title, body, tag){
+  state.mail.unshift({id:Date.now()+Math.random(), title, body, tag: tag||'Club', read:false, when:`T${state.season} · J${state.matchday}`});
+  if(state.mail.length>60) state.mail.length=60;
+}
+
+function poissonRandom(lambda){
+  const L=Math.exp(-lambda); let k=0,p=1;
+  do{k++; p*=Math.random();}while(p>L);
+  return k-1;
+}
+function simulateCPU(powerA, powerB){
+  const diff=(powerA-powerB)/10;
+  const lamA=Math.max(0.25, 1.25+diff*0.35+Math.random()*0.7);
+  const lamB=Math.max(0.25, 1.25-diff*0.35+Math.random()*0.7);
+  return [poissonRandom(lamA), poissonRandom(lamB)];
+}
+function applyResultToTable(table, ti, tj, gi, gj){
+  const A=table[ti], B=table[tj];
+  A.pj++; B.pj++; A.gf+=gi; A.gc+=gj; B.gf+=gj; B.gc+=gi;
+  if(gi>gj){ A.pg++; A.pts+=3; B.pp++; }
+  else if(gi<gj){ B.pg++; B.pts+=3; A.pp++; }
+  else { A.pe++; B.pe++; A.pts++; B.pts++; }
+}
+function sortedTable(){
+  return [...state.table].sort((a,b)=> b.pts-a.pts || (b.gf-b.gc)-(a.gf-a.gc) || b.gf-a.gf);
+}
+
+/* ============ INIT / LOAD ============ */
+async function init(){
+  const saved = await storageGet(STORAGE_KEY);
+  if(saved){
+    try{ state = JSON.parse(saved); }catch(e){ state = freshState(); }
+  } else {
+    state = freshState();
+  }
+  if(!state.schedule){ state.schedule = generateSchedule(); }
+  if(!state.table){ state.table = makeTable(); }
+  if(!state.mail || !state.mail.length){
+    addMail('¡Bienvenido al primer equipo!', `${state.playerName}, el ${state.club} te ha subido al primer equipo. El cuerpo técnico confía en ti como titular. Demuestra tu nivel en cada partido para atraer el interés de otros clubes en el futuro.`, 'Club');
+  }
+  await save();
+  renderAll();
+  bindTabs();
+  bindMatchControls();
+}
+async function save(){ await storageSet(STORAGE_KEY, JSON.stringify(state)); }
+
+function toast(msg){
+  const wrap=document.getElementById('toast-wrap');
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  wrap.appendChild(t); setTimeout(()=>t.remove(), 2800);
+}
+
+/* ============ RENDER: SHELL ============ */
+function renderAll(){
+  document.getElementById('hdrName').textContent = `${state.playerName} · OVR ${overall(state.stats)}`;
+  document.getElementById('hdrClub').textContent = `${state.club} — Delantero titular`;
+  document.getElementById('lvlBadge').textContent = state.level;
+  const need = xpToNext(state.level);
+  document.getElementById('xpFill').style.width = Math.min(100, (state.xp/need)*100)+'%';
+  document.getElementById('xpText').textContent = `${state.xp} / ${need} XP`;
+  document.getElementById('seasonText').textContent = `Temporada ${state.season}`;
+  const unread = state.mail.filter(m=>!m.read).length;
+  const badge = document.getElementById('mailBadge');
+  if(unread>0){ badge.style.display='flex'; badge.textContent=unread; } else badge.style.display='none';
+
+  renderInicio(); renderJugador(); renderLiga(); renderBuzon();
+}
+
+function colorHex(id, list){ const it=(list||COLOR_ITEMS).find(c=>c.id===id); return it?it.hex:'#38bdf8'; }
+
+/* ---- INICIO ---- */
+function renderInicio(){
+  const el=document.getElementById('tab-inicio');
+  const fixture = currentFixture();
+  const s=state.stats;
+  el.innerHTML = `
+    <div class="card">
+      <h2>Próximo partido</h2>
+      <div class="sub">Jornada ${state.matchday} de ${state.schedule.length} · Temporada ${state.season}</div>
+      <div class="next-match">
+        <div class="vs-block">
+          <div class="team-pill">
+            <div class="dot" style="background:${colorHex(state.equipped.color)};color:${colorHex(state.equipped.color)}"></div>
+            <div class="tname">${state.club} (Tú)</div>
+          </div>
+          <div class="vs-text">VS</div>
+          <div class="team-pill">
+            <div class="dot" style="background:${TEAM_COLORS[fixture.rivalIdx]};color:${TEAM_COLORS[fixture.rivalIdx]}"></div>
+            <div class="tname">${TEAM_NAMES[fixture.rivalIdx]}</div>
+          </div>
+        </div>
+        <button class="btn big" id="playMatchBtn">⚽ JUGAR PARTIDO</button>
+      </div>
+      <div class="ticker"><span>${tickerText()}</span></div>
+    </div>
+    <div class="card">
+      <h2>Resumen de carrera</h2>
+      <div class="sub">Estadísticas totales acumuladas</div>
+      <div class="stat-mini-grid">
+        <div class="mini-stat"><div class="v">${state.career.goals}</div><div class="k">Goles</div></div>
+        <div class="mini-stat"><div class="v">${state.career.assists}</div><div class="k">Asistencias</div></div>
+        <div class="mini-stat"><div class="v">${state.career.recoveries}</div><div class="k">Recuperaciones</div></div>
+        <div class="mini-stat"><div class="v">${state.career.matches}</div><div class="k">Partidos</div></div>
+        <div class="mini-stat"><div class="v">${state.career.trophies}</div><div class="k">Títulos 🏆</div></div>
+        <div class="mini-stat"><div class="v">${overall(s)}</div><div class="k">OVR actual</div></div>
+      </div>
+    </div>
+  `;
+  document.getElementById('playMatchBtn').onclick = startMatch;
+}
+function currentFixture(){
+  const round = state.schedule[state.matchday-1];
+  const mine = round.find(([h,a])=> h===0 || a===0);
+  const rivalIdx = mine[0]===0 ? mine[1] : mine[0];
+  const isHome = mine[0]===0;
+  return { round, mine, rivalIdx, isHome };
+}
+function tickerText(){
+  const items = state.mail.slice(0,4).map(m=>`📰 ${m.title}`);
+  if(!items.length) return 'Bienvenido a Cube League: Career.';
+  return items.join('   •   ');
+}
+
+/* ---- JUGADOR ---- */
+function renderJugador(){
+  const el=document.getElementById('tab-jugador');
+  const s=state.stats;
+  const statDefs=[['velocidad','Velocidad','#38bdf8'],['tiro','Tiro','#ef4463'],['pase','Pase','#34e0a1'],['regate','Regate','#a855f7'],['defensa','Defensa','#f5b942'],['fisico','Físico','#fb923c']];
+  el.innerHTML = `
+    <div class="card">
+      <div class="player-head">
+        <div class="big-cube-preview" id="bigCube"></div>
+        <div style="flex:1;min-width:200px;">
+          <h2 style="margin-bottom:2px;">${state.playerName}</h2>
+          <div class="sub">${state.club} · Nivel ${state.level}</div>
+          <div id="statBars"></div>
+        </div>
+        <div class="ovr-badge"><div class="n">${overall(s)}</div><div class="l">OVR</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Personalización</h2>
+      <div class="sub">Los tonos con brillo se desbloquean subiendo de nivel.</div>
+      <div class="custom-section-title">Color principal</div>
+      <div class="swatch-row" id="colorRow"></div>
+      <div class="custom-section-title">Color secundario</div>
+      <div class="swatch-row" id="secRow"></div>
+      <div class="custom-section-title">Estela</div>
+      <div class="trail-grid" id="trailRow"></div>
+      <div class="custom-section-title">Celebración de gol</div>
+      <div class="celeb-grid" id="celebRow"></div>
+    </div>
+  `;
+  const barsHost = el.querySelector('#statBars');
+  statDefs.forEach(([key,label,color])=>{
+    const row=document.createElement('div'); row.className='statbar-row';
+    row.innerHTML = `<div class="lab">${label}</div><div class="track"><div class="fill" style="width:${s[key]}%;background:${color}"></div></div><div class="num">${s[key]}</div>`;
+    barsHost.appendChild(row);
+  });
+  drawBigCube();
+  buildSwatches('colorRow', COLOR_ITEMS, 'color', true);
+  buildSwatches('secRow', COLOR_ITEMS, 'secondary', true);
+  buildItemGrid('trailRow', TRAIL_ITEMS, 'trail');
+  buildItemGrid('celebRow', CELEB_ITEMS, 'celeb');
+}
+function drawBigCube(){
+  const host=document.getElementById('bigCube'); if(!host) return;
+  const c1=colorHex(state.equipped.color); const c2=colorHex(state.equipped.secondary);
+  host.style.background = `linear-gradient(135deg, ${c1} 60%, ${c2} 60%)`;
+  host.style.boxShadow = `0 0 30px ${c1}88`;
+}
+function buildSwatches(hostId, list, field, isColor){
+  const host=document.getElementById(hostId); host.innerHTML='';
+  list.forEach(item=>{
+    const unlocked = state.unlocked.color.includes(item.id);
+    const sw=document.createElement('div');
+    sw.className='swatch'+(unlocked?'':' locked')+(state.equipped[field]===item.id?' selected':'');
+    sw.style.background=item.hex; sw.title=item.label + (unlocked?'':` (Nivel ${item.unlockLevel})`);
+    if(!unlocked) sw.innerHTML='<div class="lock">🔒</div>';
+    sw.onclick=()=>{
+      if(!unlocked){ toast(`Se desbloquea en el nivel ${item.unlockLevel}`); return; }
+      state.equipped[field]=item.id; save(); renderJugador();
+    };
+    host.appendChild(sw);
+  });
+}
+function buildItemGrid(hostId, list, field){
+  const host=document.getElementById(hostId); host.innerHTML='';
+  list.forEach(item=>{
+    const unlocked = state.unlocked[field].includes(item.id);
+    const card=document.createElement('div');
+    card.className='item-card'+(unlocked?'':' locked')+(state.equipped[field]===item.id?' selectedcard':'');
+    if(unlocked) card.setAttribute('data-rarity', item.rarity);
+    card.innerHTML = `<div style="font-weight:700;font-size:13px;">${unlocked?'':'🔒 '}${item.label}</div><span class="rarity-tag rarity-${item.rarity}">${rarityLabel(item.rarity)}</span>${unlocked?'':`<div style="font-size:10.5px;color:var(--muted);margin-top:6px;">Nivel ${item.unlockLevel}</div>`}`;
+    card.onclick=()=>{
+      if(!unlocked){ toast(`Se desbloquea en el nivel ${item.unlockLevel}`); return; }
+      state.equipped[field]=item.id; save(); renderJugador();
+    };
+    host.appendChild(card);
+  });
+}
+function rarityLabel(r){ return {common:'Común',rare:'Raro',epic:'Épico',legendary:'Legendario',mythic:'Mítico',secret:'Secreto',divine:'Divino',forbidden:'Prohibido'}[r]||r; }
+
+/* ---- LIGA ---- */
+function renderLiga(){
+  const el=document.getElementById('tab-liga');
+  const rows = sortedTable();
+  el.innerHTML = `
+    <div class="card">
+      <h2>Liga Cube — Temporada ${state.season}</h2>
+      <div class="sub">Jornada ${Math.min(state.matchday,state.schedule.length)} de ${state.schedule.length}</div>
+      <div style="overflow-x:auto;">
+      <table class="league">
+        <thead><tr><th></th><th style="text-align:left;">Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr></thead>
+        <tbody>
+          ${rows.map((t,i)=>`
+            <tr class="${t.idx===0?'me':''}">
+              <td class="pos-num">${i+1}</td>
+              <td class="tname"><span class="mini-dot" style="background:${TEAM_COLORS[t.idx]}"></span>${t.name}${t.idx===0?' (Tú)':''}</td>
+              <td>${t.pj}</td><td>${t.pg}</td><td>${t.pe}</td><td>${t.pp}</td><td>${t.gf}</td><td>${t.gc}</td><td>${t.gf-t.gc}</td><td><b>${t.pts}</b></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  `;
+}
+
+/* ---- BUZON ---- */
+function renderBuzon(){
+  const el=document.getElementById('tab-buzon');
+  if(!state.mail.length){
+    el.innerHTML = `<div class="card"><h2>Buzón</h2><div class="empty-hint">No tienes mensajes todavía.</div></div>`; return;
+  }
+  el.innerHTML = `<div class="card"><h2>Buzón</h2><div class="sub">Mensajes del club, la afición y el cuerpo técnico.</div><div id="mailList"></div></div>`;
+  const host=el.querySelector('#mailList');
+  state.mail.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='mail-item'+(m.read?'':' unread');
+    d.innerHTML=`<div class="mtitle"><span>${m.title}</span><span class="mtag">${m.tag} · ${m.when}</span></div><div class="mbody">${m.body}</div>`;
+    d.onclick=()=>{ m.read=true; save(); renderBuzon(); renderAll_badgeOnly(); };
+    host.appendChild(d);
+  });
+}
+function renderAll_badgeOnly(){
+  const unread = state.mail.filter(m=>!m.read).length;
+  const badge = document.getElementById('mailBadge');
+  if(unread>0){ badge.style.display='flex'; badge.textContent=unread; } else badge.style.display='none';
+}
+
+/* ---- TABS ---- */
+function bindTabs(){
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    btn.onclick=()=>{
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.tabpane').forEach(p=>p.style.display='none');
+      document.getElementById('tab-'+btn.dataset.tab).style.display='block';
+    };
+  });
+}
+
+/* ============ MODAL HELPERS ============ */
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('overlay').classList.add('show');
+}
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+document.addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
+
+/* ============ MATCH ENGINE ============ */
+const FIELD_W=900, FIELD_H=520, GOAL_HALF=75, GOAL_Y1=FIELD_H/2-GOAL_HALF, GOAL_Y2=FIELD_H/2+GOAL_HALF;
+let match = null; // runtime match object
+let matchRAF = null;
+const keys = {};
+
+function bindMatchControls(){
+  window.addEventListener('keydown', (e)=>{
+    if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key)) e.preventDefault();
+    keys[e.key.toLowerCase()]=true;
+    if(e.key===' ') keys['space']=true;
+  });
+  window.addEventListener('keyup', (e)=>{
+    keys[e.key.toLowerCase()]=false;
+    if(e.key===' ') keys['space']=false;
+  });
+  document.getElementById('pauseBtn').onclick = ()=>{
+    if(!match) return;
+    match.paused = !match.paused;
+    if(match.paused){
+      openModal(`<h3>Partido en pausa</h3><div class="sub" style="margin-top:6px;">${state.club} ${match.scoreA} - ${match.scoreB} ${TEAM_NAMES[match.rivalIdx]}</div>
+        <div style="display:flex;gap:10px;margin-top:16px;">
+          <button class="btn secondary" id="resumeBtn" style="flex:1;">Reanudar</button>
+          <button class="btn danger" id="forfeitBtn" style="flex:1;">Abandonar</button>
+        </div>`);
+      document.getElementById('resumeBtn').onclick=()=>{ match.paused=false; closeModal(); };
+      document.getElementById('forfeitBtn').onclick=()=>{ closeModal(); endMatch(true); };
+    }
+  };
+}
+
+function startMatch(){
+  const fixture = currentFixture();
+  const s = state.stats;
+  const maxSpeed = 2.5 + (s.velocidad/99)*2.3;
+  match = {
+    rivalIdx: fixture.rivalIdx, isHome: fixture.isHome,
+    scoreA:0, scoreB:0, timeLeft:92, paused:false, ended:false,
+    lastToucher:null, lastToucherPrevGoalTeam:null,
+    turbo:100, chargeStart:0, charging:false, facing:{x:1,y:0},
+    perf:{goals:0, assists:0, recoveries:0},
+    lastTeamPossession:null,
+    ball:{x:FIELD_W/2,y:FIELD_H/2,vx:0,vy:0,r:9},
+    player:{x:300,y:FIELD_H/2,vx:0,vy:0,r:16,team:'me',id:'you',maxSpeed},
+    mates:[
+      {x:190,y:FIELD_H/2-110,vx:0,vy:0,r:15,team:'me',id:'mate1',role:'mid',home:{x:220,y:FIELD_H/2-110}},
+      {x:190,y:FIELD_H/2+110,vx:0,vy:0,r:15,team:'me',id:'mate2',role:'mid',home:{x:220,y:FIELD_H/2+110}},
+    ],
+    gkMe:{x:34,y:FIELD_H/2,vx:0,vy:0,r:15,team:'me',id:'gkMe'},
+    opps:[
+      {x:700,y:FIELD_H/2-120,vx:0,vy:0,r:15,team:'opp',id:'opp1',home:{x:680,y:FIELD_H/2-120}},
+      {x:700,y:FIELD_H/2,vx:0,vy:0,r:15,team:'opp',id:'opp2',home:{x:680,y:FIELD_H/2}},
+      {x:700,y:FIELD_H/2+120,vx:0,vy:0,r:15,team:'opp',id:'opp3',home:{x:680,y:FIELD_H/2+120}},
+    ],
+    gkOpp:{x:FIELD_W-34,y:FIELD_H/2,vx:0,vy:0,r:15,team:'opp',id:'gkOpp'},
+    flashTimer:0, flashColor:null, aiTick:0,
+  };
+  document.getElementById('hq-wrap').classList.add('hidden');
+  document.getElementById('match-wrap').classList.add('active');
+  document.getElementById('hudHome').textContent = state.club;
+  document.getElementById('hudAway').textContent = TEAM_NAMES[fixture.rivalIdx];
+  document.getElementById('hudScore').textContent = '0 - 0';
+  document.getElementById('goalBanner').classList.remove('show');
+  let last = performance.now();
+  function loop(now){
+    const dt = Math.min(40, now-last); last=now;
+    if(!match.paused && !match.ended) stepMatch(dt/16.67);
+    drawMatch();
+    if(!match.ended) matchRAF = requestAnimationFrame(loop);
+  }
+  matchRAF = requestAnimationFrame(loop);
+  match._timerInterval = setInterval(()=>{
+    if(match.paused || match.ended) return;
+    match.timeLeft--;
+    const mins = Math.floor((92-match.timeLeft)/92*90);
+    document.getElementById('hudTimer').textContent = mins+"'";
+    if(match.timeLeft<=0){ endMatch(false); }
+  },1000);
+}
+
+function allOutfield(){ return [match.player, ...match.mates, ...match.opps]; }
+function allEntities(){ return [match.player, ...match.mates, match.gkMe, ...match.opps, match.gkOpp]; }
+
+function stepMatch(dt){
+  handleInput(dt);
+  match.aiTick++;
+  if(match.aiTick%2===0) runAI();
+  physicsStep(dt);
+  checkGoal();
+  if(match.flashTimer>0) match.flashTimer-=dt;
+}
+
+function handleInput(dt){
+  const p = match.player;
+  let ix=0, iy=0;
+  if(keys['arrowup']||keys['w']) iy-=1;
+  if(keys['arrowdown']||keys['s']) iy+=1;
+  if(keys['arrowleft']||keys['a']) ix-=1;
+  if(keys['arrowright']||keys['d']) ix+=1;
+  const turboActive = (keys['shift']) && match.turbo>1;
+  const speed = p.maxSpeed * (turboActive?1.55:1);
+  if(ix!==0||iy!==0){
+    const len=Math.hypot(ix,iy); ix/=len; iy/=len;
+    p.vx += (ix*speed - p.vx)*0.25;
+    p.vy += (iy*speed - p.vy)*0.25;
+    match.facing.x=ix; match.facing.y=iy;
+  } else {
+    p.vx*=0.85; p.vy*=0.85;
+  }
+  if(turboActive){ match.turbo=Math.max(0,match.turbo-1.1*dt); } else { match.turbo=Math.min(100, match.turbo+0.5*dt); }
+  document.getElementById('turboFill').style.width = match.turbo+'%';
+
+  if(keys['space']){
+    if(!match.charging){ match.charging=true; match.chargeStart=performance.now(); }
+    const held = Math.min(700, performance.now()-match.chargeStart);
+    document.getElementById('powerFill').style.width = (held/700*100)+'%';
+  } else if(match.charging){
+    const held = Math.min(700, performance.now()-match.chargeStart);
+    match.charging=false;
+    document.getElementById('powerFill').style.width='0%';
+    tryKick(p, held/700);
+  }
+}
+
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+function tryKick(entity, powerRatio, aimOverride){
+  const ball=match.ball;
+  if(dist(entity, ball) > entity.r+ball.r+16) return false;
+  const s = state.stats;
+  const skillMul = entity.team==='me' ? (0.75 + s.tiro/99*0.6) : 1;
+  const power = (4.2 + powerRatio*9.5) * skillMul;
+  let dirx=aimOverride?aimOverride.x:match.facing.x, diry=aimOverride?aimOverride.y:match.facing.y;
+  if(entity!==match.player && !aimOverride){
+    dirx = ball.x - entity.x; diry = ball.y - entity.y;
+    const l=Math.hypot(dirx,diry)||1; dirx/=l; diry/=l;
+  }
+  const len=Math.hypot(dirx,diry)||1;
+  ball.vx = (dirx/len)*power; ball.vy=(diry/len)*power;
+  registerTouch(entity);
+  return true;
+}
+
+function registerTouch(entity){
+  const team = entity.team;
+  if(match.lastToucher && match.lastToucher.team!==team && team==='me' && entity.id!=='gkMe'){
+    if(entity.id==='you') match.perf.recoveries++, state.career.recoveries++;
+  }
+  match.prevToucher = match.lastToucher;
+  match.lastToucher = entity;
+  match.lastTeamPossession = team;
+}
+
+function runAI(){
+  const ball=match.ball;
+  aiFor(match.mates, match.opps, match.gkOpp, 'me');
+  aiFor(match.opps, [match.player,...match.mates], match.gkMe, 'opp');
+  gkBehavior(match.gkMe, 0, match.opps);
+  gkBehavior(match.gkOpp, FIELD_W, [match.player,...match.mates]);
+}
+
+function aiFor(list, enemies, enemyGK, teamTag){
+  const ball=match.ball;
+  const forwardDir = teamTag==='me' ? 1 : -1;
+  let closest=null, cd=Infinity;
+  list.forEach(e=>{ const d=dist(e,ball); if(d<cd){cd=d; closest=e;} });
+  list.forEach(e=>{
+    if(e===closest && cd<170){
+      const goalX = teamTag==='me'? FIELD_W-20 : 20;
+      const distToGoal = Math.abs(goalX-e.x);
+      if(distToGoal<230 && cd<40){
+        tryKick(e, 0.55+Math.random()*0.4);
+      } else if(cd<26){
+        const teammates = list.filter(o=>o!==e);
+        let target=null;
+        if(teammates.length && Math.random()<0.5){
+          target = teammates.reduce((best,t)=> (forwardDir>0? t.x>best.x : t.x<best.x) ? t : best, teammates[0]);
+        }
+        const aim = target? norm(target.x-e.x, target.y-e.y) : norm(goalX-e.x, FIELD_H/2-e.y);
+        tryKick(e, 0.4+Math.random()*0.3, aim);
+      } else {
+        moveToward(e, ball.x, ball.y, 0.9);
+      }
+    } else {
+      const spread = (e.home? e.home.y : e.y);
+      const tx = (e.home?e.home.x:e.x) + (ball.x-FIELD_W/2)*0.15;
+      const ty = spread + (ball.y-FIELD_H/2)*0.2;
+      moveToward(e, tx, ty, 0.5);
+    }
+  });
+}
+function norm(x,y){ const l=Math.hypot(x,y)||1; return {x:x/l,y:y/l}; }
+function moveToward(e, tx, ty, mul){
+  const dx=tx-e.x, dy=ty-e.y; const l=Math.hypot(dx,dy);
+  const spd = 2.1*mul;
+  if(l>4){ e.vx += ((dx/l)*spd - e.vx)*0.15; e.vy += ((dy/l)*spd - e.vy)*0.15; }
+  else { e.vx*=0.8; e.vy*=0.8; }
+}
+function gkBehavior(gk, goalX, threats){
+  const ball=match.ball;
+  const targetY = Math.max(GOAL_Y1+10, Math.min(GOAL_Y2-10, ball.y));
+  moveToward(gk, goalX<100?34:FIELD_W-34, targetY, 0.6);
+  if(dist(gk,ball) < gk.r+ball.r+18 && Math.abs(ball.x-gk.x)<120){
+    tryKick(gk, 0.5+Math.random()*0.3, norm((goalX<100?FIELD_W-100:100)-gk.x, (FIELD_H/2+ (Math.random()-0.5)*200)-gk.y));
+  }
+}
+
+function physicsStep(dt){
+  const ball=match.ball;
+  allEntities().forEach(e=>{
+    e.x+=e.vx*dt; e.y+=e.vy*dt;
+    e.x=Math.max(e.r, Math.min(FIELD_W-e.r, e.x));
+    e.y=Math.max(e.r, Math.min(FIELD_H-e.r, e.y));
+  });
+  ball.x+=ball.vx*dt; ball.y+=ball.vy*dt;
+  ball.vx*=0.985; ball.vy*=0.985;
+  if(ball.y<ball.r || ball.y>FIELD_H-ball.r){ ball.vy*=-0.75; ball.y=Math.max(ball.r,Math.min(FIELD_H-ball.r,ball.y)); }
+  const onGoalLine = (ball.y>GOAL_Y1 && ball.y<GOAL_Y2);
+  if(!onGoalLine){
+    if(ball.x<ball.r){ ball.vx*=-0.7; ball.x=ball.r; }
+    if(ball.x>FIELD_W-ball.r){ ball.vx*=-0.7; ball.x=FIELD_W-ball.r; }
+  }
+  allEntities().forEach(e=>{
+    const d=dist(e,ball);
+    const minD=e.r+ball.r;
+    if(d<minD && d>0.01){
+      const nx=(ball.x-e.x)/d, ny=(ball.y-e.y)/d;
+      const overlap=minD-d;
+      ball.x+=nx*overlap; ball.y+=ny*overlap;
+      const speed=Math.hypot(e.vx,e.vy);
+      if(speed>0.3){ ball.vx += nx*speed*0.6; ball.vy += ny*speed*0.6; }
+      if(!match.charging || e!==match.player) registerTouch(e);
+    }
+  });
+  for(let i=0;i<allOutfield().length;i++){
+    for(let j=i+1;j<allOutfield().length;j++){
+      const a=allOutfield()[i], b=allOutfield()[j];
+      const d=dist(a,b), minD=a.r+b.r;
+      if(d<minD && d>0.01){
+        const nx=(b.x-a.x)/d, ny=(b.y-a.y)/d, overlap=(minD-d)/2;
+        a.x-=nx*overlap; a.y-=ny*overlap; b.x+=nx*overlap; b.y+=ny*overlap;
+      }
+    }
+  }
+}
+
+function checkGoal(){
+  const ball=match.ball;
+  if(match.flashTimer>0) return;
+  if(ball.x<=ball.r+1 && ball.y>GOAL_Y1 && ball.y<GOAL_Y2){
+    onGoal('opp');
+  } else if(ball.x>=FIELD_W-ball.r-1 && ball.y>GOAL_Y1 && ball.y<GOAL_Y2){
+    onGoal('me');
+  }
+}
+function onGoal(team){
+  const banner=document.getElementById('goalBanner');
+  if(team==='me'){
+    match.scoreA++;
+    if(match.lastToucher && match.lastToucher.id==='you'){ match.perf.goals++; state.career.goals++; }
+    else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you'){ match.perf.assists++; state.career.assists++; }
+    banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
+  } else {
+    match.scoreB++;
+    banner.style.color='var(--danger)'; banner.textContent='GOL RIVAL';
+  }
+  document.getElementById('hudScore').textContent = `${match.scoreA} - ${match.scoreB}`;
+  banner.classList.add('show');
+  setTimeout(()=>banner.classList.remove('show'), 1400);
+  match.flashTimer=1.6;
+  resetKickoff(team==='me'?'opp':'me');
+}
+function resetKickoff(startingTeam){
+  const ball=match.ball;
+  ball.x=FIELD_W/2; ball.y=FIELD_H/2; ball.vx=0; ball.vy=0;
+  match.player.x=300; match.player.y=FIELD_H/2; match.player.vx=0; match.player.vy=0;
+  match.mates[0].x=190; match.mates[0].y=FIELD_H/2-110;
+  match.mates[1].x=190; match.mates[1].y=FIELD_H/2+110;
+  match.opps[0].x=700; match.opps[0].y=FIELD_H/2-120;
+  match.opps[1].x=700; match.opps[1].y=FIELD_H/2;
+  match.opps[2].x=700; match.opps[2].y=FIELD_H/2+120;
+  match.lastToucher=null; match.prevToucher=null;
+}
+
+/* ---- draw ---- */
+function drawMatch(){
+  const cv=document.getElementById('matchCanvas'); const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,FIELD_W,FIELD_H);
+  ctx.fillStyle='#0e2f1f'; ctx.fillRect(0,0,FIELD_W,FIELD_H);
+  for(let i=0;i<10;i++){ ctx.fillStyle= i%2===0? 'rgba(255,255,255,0.02)':'transparent'; ctx.fillRect(i*(FIELD_W/10),0,FIELD_W/10,FIELD_H); }
+  ctx.strokeStyle='rgba(255,255,255,0.35)'; ctx.lineWidth=2;
+  ctx.strokeRect(6,6,FIELD_W-12,FIELD_H-12);
+  ctx.beginPath(); ctx.moveTo(FIELD_W/2,6); ctx.lineTo(FIELD_W/2,FIELD_H-6); ctx.stroke();
+  ctx.beginPath(); ctx.arc(FIELD_W/2,FIELD_H/2,55,0,Math.PI*2); ctx.stroke();
+  ctx.strokeRect(6,GOAL_Y1-30,110,GOAL_HALF*2+60);
+  ctx.strokeRect(FIELD_W-116,GOAL_Y1-30,110,GOAL_HALF*2+60);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillRect(0,GOAL_Y1,6,GOAL_HALF*2);
+  ctx.fillRect(FIELD_W-6,GOAL_Y1,6,GOAL_HALF*2);
+
+  if(match.flashTimer>0){
+    ctx.fillStyle = match.scoreA>=0 ? `rgba(245,185,66,${Math.min(0.35,match.flashTimer*0.25)})` : 'rgba(239,68,99,0.2)';
+  }
+
+  const trail = match._trail || (match._trail=[]);
+  if(state.equipped.trail!=='none'){
+    trail.push({x:match.player.x,y:match.player.y});
+    if(trail.length>14) trail.shift();
+    trail.forEach((t,i)=>{
+      ctx.globalAlpha = (i/trail.length)*0.5;
+      ctx.fillStyle = trailColorFor(state.equipped.trail);
+      ctx.beginPath(); ctx.arc(t.x,t.y,10*(i/trail.length),0,Math.PI*2); ctx.fill();
+    });
+    ctx.globalAlpha=1;
+  }
+
+  drawCube(ctx, match.gkMe, colorHex(state.equipped.color)+'55', '#ffffff', 'PT');
+  match.mates.forEach(m=>drawCube(ctx, m, TEAM_COLORS[0]+'aa', '#0a0e1a', ''));
+  match.opps.forEach(o=>drawCube(ctx, o, TEAM_COLORS[match.rivalIdx], '#0a0e1a', ''));
+  drawCube(ctx, match.gkOpp, TEAM_COLORS[match.rivalIdx]+'55', '#ffffff', 'PT');
+  drawCube(ctx, match.player, colorHex(state.equipped.color), colorHex(state.equipped.secondary), '', true);
+
+  ctx.beginPath(); ctx.fillStyle='#f5f7ff'; ctx.arc(match.ball.x, match.ball.y, match.ball.r, 0, Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#222'; ctx.lineWidth=1.2; ctx.stroke();
+}
+function trailColorFor(id){ return {spark:'#ffe58a',trail_blue:'#38bdf8',trail_fire:'#ff7a3c',trail_void:'#a855f7'}[id]||'#ffe58a'; }
+function drawCube(ctx, e, fill, edge, label, isYou){
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  ctx.fillStyle=fill;
+  if(isYou){ ctx.shadowColor=fill; ctx.shadowBlur=16; }
+  roundRect(ctx,-e.r,-e.r,e.r*2,e.r*2,6); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle=edge; ctx.lineWidth=2; roundRect(ctx,-e.r,-e.r,e.r*2,e.r*2,6); ctx.stroke();
+  if(label){ ctx.fillStyle=edge; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.fillText(label,0,3); }
+  ctx.restore();
+}
+function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+/* ============ END MATCH / RESULTS / XP ============ */
+function endMatch(forfeited){
+  if(match.ended) return;
+  match.ended = true;
+  clearInterval(match._timerInterval);
+  if(forfeited) match.scoreB = Math.max(match.scoreB, match.scoreA+1);
+
+  applyResultToTable(state.table, 0, match.rivalIdx, match.scoreA, match.scoreB);
+  simulateOtherMatches();
+
+  state.career.matches++;
+  let xp = 15 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  let outcome='Empate';
+  if(match.scoreA>match.scoreB){ xp+=25; outcome='Victoria'; }
+  else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
+
+  addMail(`Resultado: ${state.club} ${match.scoreA}-${match.scoreB} ${TEAM_NAMES[match.rivalIdx]}`,
+    `${outcome}. Contribuiste con ${match.perf.goals} gol(es), ${match.perf.assists} asistencia(s) y ${match.perf.recoveries} recuperación(es). Ganaste ${xp} XP.`, 'Resultado');
+
+  const levelUps = grantXP(xp, match.perf);
+
+  state.matchday++;
+  let seasonEnded=false;
+  if(state.matchday>state.schedule.length){
+    seasonEnded=true; finishSeason();
+  }
+
+  save();
+  showResultModal(outcome, xp, levelUps, seasonEnded);
+}
+
+function simulateOtherMatches(){
+  const round = state.schedule[state.matchday-1];
+  round.forEach(([h,a])=>{
+    if(h===0||a===0) return;
+    const [gh,ga]=simulateCPU(TEAM_POWER[h], TEAM_POWER[a]);
+    applyResultToTable(state.table, h, a, gh, ga);
+  });
+}
+
+function grantXP(xp, perf){
+  state.xp += xp;
+  const ups=[];
+  while(state.xp >= xpToNext(state.level)){
+    state.xp -= xpToNext(state.level);
+    state.level++;
+    ups.push(levelUpRewards(perf));
+  }
+  return ups;
+}
+function levelUpRewards(perf){
+  const s=state.stats;
+  const dom = Object.entries({goals:perf.goals*2, assists:perf.assists*1.4, recoveries:perf.recoveries}).sort((a,b)=>b[1]-a[1])[0][0];
+  const gains=[];
+  function bump(key,amt){ if(s[key]<99){ const before=s[key]; s[key]=Math.min(99,s[key]+amt); gains.push([key,s[key]-before]); } }
+  if(dom==='goals'){ bump('tiro',2); bump('regate',1); }
+  else if(dom==='assists'){ bump('pase',2); bump('regate',1); }
+  else { bump('defensa',2); bump('fisico',1); }
+  bump('velocidad',1); bump('fisico',1);
+  const unlockId = LEVEL_UNLOCK_ANNOUNCE[state.level];
+  let unlockItem=null;
+  if(unlockId){
+    [COLOR_ITEMS,TRAIL_ITEMS,CELEB_ITEMS].forEach(list=>{
+      const found=list.find(i=>i.id===unlockId);
+      if(found){
+        const field = list===COLOR_ITEMS?'color':(list===TRAIL_ITEMS?'trail':'celeb');
+        if(!state.unlocked[field].includes(unlockId)) state.unlocked[field].push(unlockId);
+        unlockItem=found;
+      }
+    });
+  }
+  return {level:state.level, gains, unlockItem};
+}
+
+function finishSeason(){
+  const rows=sortedTable();
+  const champ = rows[0];
+  const youPos = rows.findIndex(r=>r.idx===0)+1;
+  if(champ.idx===0){
+    state.career.trophies++;
+    addMail(`🏆 ¡CAMPEÓN DE LIGA!`, `Has llevado al ${state.club} a ganar la Liga Cube en la Temporada ${state.season}. La afición celebra por todo lo alto.`, 'Trofeo');
+  } else {
+    addMail(`Fin de temporada — ${champ.name} campeón`, `Terminaste la Temporada ${state.season} en la posición ${youPos} con el ${state.club}. Nueva temporada, nuevo objetivo: el título.`, 'Liga');
+  }
+  state.season++; state.matchday=1; state.table=makeTable(); state.schedule=generateSchedule();
+}
+
+function showResultModal(outcome, xp, levelUps, seasonEnded){
+  const banner = outcome==='Victoria'?'🏆':(outcome==='Empate'?'🤝':'💔');
+  let html = `<h3>${banner} ${outcome}</h3>
+    <div class="sub" style="margin:4px 0 14px;">${state.club} ${match.scoreA} - ${match.scoreB} ${TEAM_NAMES[match.rivalIdx]}</div>
+    <div class="stat-mini-grid">
+      <div class="mini-stat"><div class="v">${match.perf.goals}</div><div class="k">Goles</div></div>
+      <div class="mini-stat"><div class="v">${match.perf.assists}</div><div class="k">Asistencias</div></div>
+      <div class="mini-stat"><div class="v">${match.perf.recoveries}</div><div class="k">Recuperaciones</div></div>
+      <div class="mini-stat"><div class="v">+${xp}</div><div class="k">XP ganada</div></div>
+    </div>`;
+  if(seasonEnded) html += `<div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">📅 Temporada finalizada — revisa tu buzón. Empieza la Temporada ${state.season}.</div>`;
+  html += `<div style="margin-top:18px;"><button class="btn big" id="resultContinueBtn" style="width:100%;">Continuar</button></div>`;
+  openModal(html);
+  document.getElementById('resultContinueBtn').onclick = ()=>{
+    closeModal();
+    document.getElementById('match-wrap').classList.remove('active');
+    document.getElementById('hq-wrap').classList.remove('hidden');
+    renderAll();
+    if(levelUps && levelUps.length){ playLevelUpSequence(levelUps, 0); }
+  };
+}
+
+function playLevelUpSequence(ups, idx){
+  if(idx>=ups.length) return;
+  const info = ups[idx];
+  const rarity = info.unlockItem? info.unlockItem.rarity : 'common';
+  const html = `
+    <h3>¡Subiste al nivel ${info.level}!</h3>
+    <div class="capsule-stage">
+      <div class="capsule-box" id="capBox">🎁</div>
+    </div>
+    <div id="rewardList"></div>
+    <div style="margin-top:14px;"><button class="btn big" id="capContinueBtn" style="width:100%;" disabled>Abriendo...</button></div>
+  `;
+  openModal(html);
+  const box=document.getElementById('capBox');
+  setTimeout(()=>{ box.classList.add('shaking'); }, 150);
+  setTimeout(()=>{
+    box.classList.remove('shaking'); box.classList.add('burst');
+    const list=document.getElementById('rewardList');
+    info.gains.forEach(([key,amt],i)=>{
+      if(amt<=0) return;
+      const row=document.createElement('div'); row.className='reward-line'; row.style.animationDelay=(i*0.12)+'s';
+      row.innerHTML = `<span>${statLabel(key)}</span><span style="color:var(--accent);font-weight:800;">+${amt}</span>`;
+      list.appendChild(row);
+    });
+    if(info.unlockItem){
+      const row=document.createElement('div'); row.className='reward-line item-card'; row.setAttribute('data-rarity', rarity);
+      row.style.animationDelay=(info.gains.length*0.12+0.15)+'s';
+      row.innerHTML = `<span>🆕 ${info.unlockItem.label}</span><span class="rarity-tag rarity-${rarity}">${rarityLabel(rarity)}</span>`;
+      list.appendChild(row);
+    }
+    const btn=document.getElementById('capContinueBtn'); btn.disabled=false; btn.textContent='Aceptar';
+    btn.onclick=()=>{ closeModal(); playLevelUpSequence(ups, idx+1); };
+  }, 650);
+}
+function statLabel(k){ return {velocidad:'Velocidad',tiro:'Tiro',pase:'Pase',regate:'Regate',defensa:'Defensa',fisico:'Físico'}[k]||k; }
+
+init();
+})();
+</script>
