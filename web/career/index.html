@@ -331,7 +331,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v7 — partido jugable (ordenador o móvil) + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
+    <div class="footer-note">Cube League: Career · v8 — partido jugable (ordenador o móvil) + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -452,6 +452,38 @@ function maybeGenerateFanMail(){
 }
 const FORM_BENCH_THRESHOLD = 40;
 
+/* ---- playstyles ---- */
+const PLAYSTYLES = [
+  {id:'aceleracion', label:'Aceleración Explosiva', icon:'⚡', desc:'Alcanzas tu velocidad máxima mucho más rápido.', unlock:{type:'career_matches', target:8, label:'partidos jugados'}},
+  {id:'francotirador', label:'Francotirador', icon:'🎯', desc:'Tus disparos llevan más potencia.', unlock:{type:'career_goals', target:20, label:'goles en carrera'}},
+  {id:'iman', label:'Imán del Balón', icon:'🧲', desc:'Controlas el balón con más facilidad al recibirlo.', unlock:{type:'career_recoveries', target:15, label:'recuperaciones'}},
+  {id:'curva', label:'Curva Imposible', icon:'🌀', desc:'Tus regates son más precisos.', unlock:{type:'career_assists', target:12, label:'asistencias'}},
+  {id:'turbo_maestro', label:'Turbo Maestro', icon:'🚀', desc:'El turbo se agota más despacio y se recarga más rápido.', unlock:{type:'career_matches', target:15, label:'partidos jugados'}},
+  {id:'muro', label:'Muro', icon:'🛡', desc:'Mayor probabilidad de éxito en las entradas.', unlock:{type:'career_recoveries', target:25, label:'recuperaciones'}},
+  {id:'rematador', label:'Rematador', icon:'🔥', desc:'Ganas más XP por cada gol que marcas.', unlock:{type:'trophies', target:1, label:'título(s) ganado(s)'}},
+  {id:'fantasma', label:'Regate Fantasma', icon:'🌪', desc:'Tus regates dejan al rival aturdido más tiempo.', unlock:{type:'career_matches', target:25, label:'partidos jugados'}},
+];
+function playstyleProgress(ps){
+  switch(ps.unlock.type){
+    case 'career_matches': return state.career.matches;
+    case 'career_goals': return state.career.goals;
+    case 'career_assists': return state.career.assists;
+    case 'career_recoveries': return state.career.recoveries;
+    case 'trophies': return state.career.trophies+state.career.cupTrophies;
+    default: return 0;
+  }
+}
+function checkPlaystyleUnlocks(){
+  PLAYSTYLES.forEach(ps=>{
+    if(state.unlockedPlaystyles.includes(ps.id)) return;
+    if(playstyleProgress(ps) >= ps.unlock.target){
+      state.unlockedPlaystyles.push(ps.id);
+      addMail(`🌟 Playstyle desbloqueado: ${ps.label}`, `${ps.desc} Equípalo desde la pestaña Jugador.`, 'Playstyle');
+    }
+  });
+}
+function hasPS(id){ return state.equipped.playstyle===id; }
+
 /* ---- Copa Cube ---- */
 const CUP_FILLER_TEAMS = [
   {name:'Cyber Rovers', color:'#22d3ee', power:64},
@@ -481,11 +513,23 @@ function makeSeasonGoals(){
     {id:'goals', label:'Marcar 15 goles en la temporada', type:'goals', target:15, progress:0, done:false, reward:120},
     {id:'assists', label:'Dar 10 asistencias en la temporada', type:'assists', target:10, progress:0, done:false, reward:100},
     {id:'winLeague', label:'Ganar la Liga Cube', type:'champion', target:1, progress:0, done:false, reward:300},
+    {id:'balon', label:'Ganar el Balón Cube (30 pts: goles×2 + asistencias)', type:'balon', target:30, progress:0, done:false, reward:250},
   ];
 }
 function checkSeasonGoals(){
   state.seasonGoals.forEach(g=>{
     if(g.done || g.type==='champion') return;
+    if(g.type==='balon'){
+      g.progress = state.seasonStats.goals*2 + state.seasonStats.assists;
+      if(g.progress>=g.target){
+        g.done=true;
+        state.xp += g.reward;
+        state.career.balonCube = (state.career.balonCube||0)+1;
+        state.trophyHistory.push({season:state.season, type:'balon', club:CLUBS[state.clubIdx].name});
+        addMail('⚽🏅 ¡GANAS EL BALÓN CUBE!', `Con tu nivel esta temporada te consagras como el mejor jugador de la Liga Cube. Ganas ${g.reward} XP extra.`, 'Trofeo');
+      }
+      return;
+    }
     g.progress = state.seasonStats[g.type] || 0;
     if(g.progress>=g.target){
       g.done=true;
@@ -554,9 +598,10 @@ function freshState(){
     clubIdx: 0,
     level: 1, xp: 0,
     stats: { velocidad:58, tiro:55, pase:56, regate:57, defensa:50, fisico:55 },
-    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump' },
+    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump', playstyle:null },
     unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'] },
-    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0, cupTrophies:0 },
+    unlockedPlaystyles: [],
+    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0, cupTrophies:0, balonCube:0 },
     form: 55,
     season: 1, matchday: 1,
     schedule: null, table: null,
@@ -644,6 +689,9 @@ async function init(){
   if(state.career.cupTrophies===undefined) state.career.cupTrophies = 0;
   if(!state.trainingDone) state.trainingDone = { velocidad:false, tiro:false, regate:false, defensa:false };
   if(!state.trophyHistory) state.trophyHistory = [];
+  if(!state.unlockedPlaystyles) state.unlockedPlaystyles = [];
+  if(state.equipped.playstyle===undefined) state.equipped.playstyle = null;
+  if(state.career.balonCube===undefined) state.career.balonCube = 0;
   if(!state.fanMail) state.fanMail = [];
   if(!state.schedule){ state.schedule = generateSchedule(); }
   if(!state.table){ state.table = makeTable(); }
@@ -790,6 +838,7 @@ function renderInicio(){
         <div class="mini-stat"><div class="v">${state.career.matches}</div><div class="k">Partidos</div></div>
         <div class="mini-stat"><div class="v">${state.career.trophies}</div><div class="k">Ligas 🏆</div></div>
         <div class="mini-stat"><div class="v">${state.career.cupTrophies}</div><div class="k">Copas 🏆</div></div>
+        <div class="mini-stat"><div class="v">${state.career.balonCube||0}</div><div class="k">Balón Cube 🥇</div></div>
         <div class="mini-stat"><div class="v">${overall(s)}</div><div class="k">OVR actual</div></div>
       </div>
     </div>
@@ -851,6 +900,11 @@ function renderJugador(){
       <div class="custom-section-title">Celebración de gol</div>
       <div class="celeb-grid" id="celebRow"></div>
     </div>
+    <div class="card">
+      <h2>Playstyle</h2>
+      <div class="sub">Se desbloquean jugando y equipas uno solo a la vez. Da un efecto real en el partido.</div>
+      <div class="trail-grid" id="playstyleRow"></div>
+    </div>
   `;
   const barsHost = el.querySelector('#statBars');
   statDefs.forEach(([key,label,color])=>{
@@ -863,6 +917,25 @@ function renderJugador(){
   buildSwatches('secRow', COLOR_ITEMS, 'secondary', true);
   buildItemGrid('trailRow', TRAIL_ITEMS, 'trail');
   buildItemGrid('celebRow', CELEB_ITEMS, 'celeb');
+  buildPlaystyleGrid();
+}
+function buildPlaystyleGrid(){
+  const host=document.getElementById('playstyleRow'); host.innerHTML='';
+  PLAYSTYLES.forEach(ps=>{
+    const unlocked = state.unlockedPlaystyles.includes(ps.id);
+    const equipped = state.equipped.playstyle===ps.id;
+    const card=document.createElement('div');
+    card.className='item-card'+(unlocked?'':' locked')+(equipped?' selectedcard':'');
+    if(unlocked) card.setAttribute('data-rarity','epic');
+    const progress = playstyleProgress(ps);
+    card.innerHTML = `<div style="font-weight:700;font-size:13px;">${ps.icon} ${ps.label}</div><div style="font-size:11px;color:var(--muted);margin-top:4px;">${ps.desc}</div>${unlocked?(equipped?'<div style="margin-top:6px;font-size:10.5px;font-weight:800;color:var(--accent);">EQUIPADO</div>':''):`<div style="margin-top:6px;font-size:10.5px;color:var(--muted);">${Math.min(progress,ps.unlock.target)}/${ps.unlock.target} ${ps.unlock.label}</div>`}`;
+    card.onclick=()=>{
+      if(!unlocked){ toast(`Sigue jugando: ${playstyleProgress(ps)}/${ps.unlock.target} ${ps.unlock.label}`); return; }
+      state.equipped.playstyle = equipped ? null : ps.id;
+      save(); renderJugador();
+    };
+    host.appendChild(card);
+  });
 }
 function drawBigCube(){
   const host=document.getElementById('bigCube'); if(!host) return;
@@ -928,8 +1001,9 @@ function renderPlantilla(){
 function renderVida(){
   const el=document.getElementById('tab-vida');
   const {tier, next} = homeTier();
+  const TROPHY_LABELS = {liga:['🏆','Liga Cube'], copa:['🥇','Copa Cube'], balon:['⚽🏅','Balón Cube']};
   const trophyRows = state.trophyHistory.length
-    ? state.trophyHistory.slice().reverse().map(t=>`<div class="trophy-row"><span>${t.type==='liga'?'🏆':'🥇'}</span><span>${t.type==='liga'?'Liga Cube':'Copa Cube'} — Temporada ${t.season}</span></div>`).join('')
+    ? state.trophyHistory.slice().reverse().map(t=>{ const [ico,label]=TROPHY_LABELS[t.type]||['🏆',t.type]; return `<div class="trophy-row"><span>${ico}</span><span>${label} — Temporada ${t.season}</span></div>`; }).join('')
     : `<div class="empty-hint">Todavía no has ganado ningún título. ¡A por el primero!</div>`;
   const fanCards = state.fanMail.length
     ? state.fanMail.slice(0,8).map(f=>`<div class="fan-card"><div class="fan-name">💌 ${f.name}</div><div class="fan-text">"${f.text}"</div></div>`).join('')
@@ -949,7 +1023,7 @@ function renderVida(){
     </div>
     <div class="card">
       <h2>Vitrina de trofeos</h2>
-      <div class="sub">${state.career.trophies} Liga(s) · ${state.career.cupTrophies} Copa(s)</div>
+      <div class="sub">${state.career.trophies} Liga(s) · ${state.career.cupTrophies} Copa(s) · ${state.career.balonCube||0} Balón(es) Cube</div>
       ${trophyRows}
     </div>
     <div class="card">
@@ -1398,15 +1472,18 @@ function handleInput(dt){
   const turboActive = turboHeld && match.turbo>1;
   const speed = p.maxSpeed * (turboActive?1.55:1) * (p.stumbleTimer>0?0.5:1);
   const mag = Math.hypot(ix,iy);
+  const accelLerp = hasPS('aceleracion') ? 0.4 : 0.25;
   if(mag>0.06){
     const nx=ix/mag, ny=iy/mag; const scaledSpeed = speed*Math.min(1,mag);
-    p.vx += (nx*scaledSpeed - p.vx)*0.25;
-    p.vy += (ny*scaledSpeed - p.vy)*0.25;
+    p.vx += (nx*scaledSpeed - p.vx)*accelLerp;
+    p.vy += (ny*scaledSpeed - p.vy)*accelLerp;
     match.facing.x=nx; match.facing.y=ny;
   } else {
     p.vx*=0.85; p.vy*=0.85;
   }
-  if(turboActive){ match.turbo=Math.max(0,match.turbo-1.1*dt); } else { match.turbo=Math.min(100, match.turbo+0.5*dt); }
+  const turboMul = hasPS('turbo_maestro') ? 0.65 : 1;
+  const turboRegenMul = hasPS('turbo_maestro') ? 1.4 : 1;
+  if(turboActive){ match.turbo=Math.max(0,match.turbo-1.1*dt*turboMul); } else { match.turbo=Math.min(100, match.turbo+0.5*dt*turboRegenMul); }
   document.getElementById('turboFill').style.width = match.turbo+'%';
 
   if(kickHeld){
@@ -1425,10 +1502,13 @@ function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
 
 function tryKick(entity, powerRatio, aimOverride){
   const ball=match.ball;
-  if(dist(entity, ball) > entity.r+ball.r+16) return false;
+  const isYouKicking = entity===match.player;
+  const range = entity.r+ball.r+16 + (isYouKicking && hasPS('iman') ? 8 : 0);
+  if(dist(entity, ball) > range) return false;
   const s = state.stats;
   const skillMul = entity.team==='me' ? (0.75 + s.tiro/99*0.6) : 1;
-  const power = (4.2 + powerRatio*9.5) * skillMul;
+  let power = (4.2 + powerRatio*9.5) * skillMul;
+  if(isYouKicking && hasPS('francotirador')) power *= 1.15;
   const useUserAim = entity===match.player && entity.userControlled && !aimOverride;
   let dirx, diry;
   if(useUserAim){ dirx=match.facing.x; diry=match.facing.y; }
@@ -1476,13 +1556,14 @@ function flashPlayerEffect(color){
 }
 function doDribble(defender){
   const s=state.stats;
-  const chance = Math.max(0.15, Math.min(0.9, 0.45 + (s.regate-60)/160));
+  let chance = Math.max(0.15, Math.min(0.9, 0.45 + (s.regate-60)/160));
+  if(hasPS('curva')) chance = Math.min(0.95, chance+0.12);
   const p = match.player;
   if(Math.random() < chance){
     const dirx = match.facing.x||1, diry = match.facing.y||0;
     p.vx += dirx*4.2; p.vy += diry*4.2;
     defender.vx -= dirx*1.8; defender.vy -= diry*1.8;
-    defender.stunTimer = 28;
+    defender.stunTimer = hasPS('fantasma') ? 42 : 28;
     toast('🔄 ¡Regate conseguido!');
     flashPlayerEffect('#34e0a1');
   } else {
@@ -1495,7 +1576,8 @@ function doDribble(defender){
 }
 function doTackle(attacker){
   const s=state.stats;
-  const chance = Math.max(0.15, Math.min(0.85, 0.4 + (s.defensa-60)/150));
+  let chance = Math.max(0.15, Math.min(0.85, 0.4 + (s.defensa-60)/150));
+  if(hasPS('muro')) chance = Math.min(0.93, chance+0.15);
   const p = match.player;
   if(Math.random() < chance){
     const ball=match.ball;
@@ -1786,6 +1868,7 @@ function endMatch(forfeited){
   state.career.matches++;
   const neverPlayed = match.playerBenched && !match.subDecided;
   let xp = neverPlayed ? 4 : 15 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  if(!neverPlayed && hasPS('rematador')) xp += match.perf.goals*8;
   let outcome='Empate';
   if(match.scoreA>match.scoreB){ xp+=neverPlayed?0:25; outcome='Victoria'; }
   else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
@@ -1807,6 +1890,7 @@ function endMatch(forfeited){
   else if(outcome==='Empate' && !neverPlayed && Math.random()<0.35) wonEnvelope = rollEnvelopeRarity();
 
   checkSeasonGoals();
+  checkPlaystyleUnlocks();
 
   state.matchday++;
   state.trainingDone = { velocidad:false, tiro:false, regate:false, defensa:false };
@@ -1822,8 +1906,10 @@ function endMatch(forfeited){
 
 /* ---- Copa Cube match resolution ---- */
 function endCupMatch(forfeited){
+  state.career.matches++;
   const neverPlayed = match.playerBenched && !match.subDecided;
   let xp = neverPlayed ? 4 : 20 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  if(!neverPlayed && hasPS('rematador')) xp += match.perf.goals*8;
   let outcome='Empate';
   if(match.scoreA>match.scoreB){ outcome='Victoria'; }
   else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
@@ -1858,6 +1944,7 @@ function endCupMatch(forfeited){
   let wonEnvelope = null;
   if(won) wonEnvelope = rollEnvelopeRarity();
   checkSeasonGoals();
+  checkPlaystyleUnlocks();
   maybeGenerateFanMail();
   save();
   showResultModal(outcome, xp, levelUps, false, wonEnvelope, cupNote);
