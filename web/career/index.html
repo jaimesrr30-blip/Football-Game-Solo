@@ -35,9 +35,13 @@ body{
   box-shadow:0 0 20px rgba(52,224,161,0.5);
 }
 .topbar .who{flex:1;min-width:0;}
-.topbar .who .name{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;}
-.topbar .who .club{color:var(--muted);font-size:12.5px;margin-top:2px;}
+.topbar .who .name{font-weight:800;font-size:17px;display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.topbar .who .club{color:var(--muted);font-size:12.5px;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .xpwrap{width:220px;flex:none;}
+@media (max-width:640px){
+  .topbar{ flex-wrap:wrap; gap:10px; }
+  .xpwrap{ width:100%; order:5; }
+}
 .xpbar-outer{height:10px;border-radius:6px;background:rgba(255,255,255,0.08);overflow:hidden;border:1px solid var(--border);}
 .xpbar-inner{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s cubic-bezier(.2,.9,.3,1);}
 .xplabel{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;}
@@ -252,6 +256,13 @@ table.league tr.me td.tname{ color:var(--accent); }
 .action-btn.pressed{ transform:scale(0.86); filter:brightness(1.25); }
 .rotate-hint{ display:none; position:absolute; inset:0; background:rgba(6,10,20,0.94); color:#fff; z-index:20; align-items:center; justify-content:center; text-align:center; font-size:17px; font-weight:800; padding:20px; }
 @media (max-width:840px) and (orientation:portrait){ .match-wrap.mobile-mode .rotate-hint{ display:flex; } }
+
+/* ---------- bench panel ---------- */
+.bench-panel{ position:absolute; left:12px; top:12px; display:none; align-items:center; gap:10px; background:rgba(6,10,20,0.75); border:1px solid var(--border); border-radius:14px; padding:8px 14px 8px 8px; backdrop-filter:blur(6px); z-index:6; max-width:220px; }
+.bench-panel.show{ display:flex; }
+.bench-cube{ width:30px;height:30px;border-radius:8px; flex:none; animation: benchBounce 1.4s ease-in-out infinite; box-shadow:0 0 12px currentColor; }
+@keyframes benchBounce{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(-4px);} }
+.bench-text{ font-size:11px; font-weight:700; color:#fff; line-height:1.35; }
 </style>
 
 <div class="app">
@@ -308,6 +319,10 @@ table.league tr.me td.tname{ color:var(--accent); }
       <button class="pause-btn" id="pauseBtn">⏸</button>
       <canvas id="matchCanvas" width="900" height="520"></canvas>
       <div class="goal-banner" id="goalBanner">¡GOL!</div>
+      <div class="bench-panel" id="benchPanel">
+        <div class="bench-cube" id="benchCube"></div>
+        <div class="bench-text">🪑 En el banquillo<br><span style="font-weight:400;opacity:.8;">El entrenador decide cuándo entras</span></div>
+      </div>
       <div class="mobile-controls" id="mobileControls">
         <div class="joy-base" id="joyBase"><div class="joy-knob" id="joyKnob"></div></div>
         <div class="action-btns">
@@ -355,6 +370,7 @@ const CLUBS = [
   {name:'Titanio SC',     color:'#fb923c', power:73},
 ];
 const BENCH_NAMES = ['Nova','Rex','Blitz','Orion','Kade','Zeta','Milo','Vex','Draco','Luma'];
+const FORM_BENCH_THRESHOLD = 40;
 
 const COLOR_ITEMS = [
   {id:'blue', label:'Azul Cube', rarity:'common', hex:'#38bdf8', unlockLevel:1},
@@ -395,6 +411,7 @@ function freshState(){
     equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump' },
     unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'] },
     career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0 },
+    form: 55,
     season: 1, matchday: 1,
     schedule: null, table: null,
     mail: [],
@@ -466,6 +483,7 @@ async function init(){
     state = freshState();
   }
   if(state.clubIdx===undefined || state.clubIdx===null) state.clubIdx = 0;
+  if(state.form===undefined || state.form===null) state.form = 55;
   if(!state.settings) state.settings = { controlMode:'desktop' };
   if(!state.squad || !state.squad.bench) state.squad = { bench: generateBench() };
   if(!state.schedule){ state.schedule = generateSchedule(); }
@@ -507,14 +525,25 @@ function renderAll(){
 function colorHex(id, list){ const it=(list||COLOR_ITEMS).find(c=>c.id===id); return it?it.hex:'#38bdf8'; }
 
 /* ---- INICIO ---- */
+function formInfo(){
+  const f = state.form;
+  const hue = Math.max(0, Math.min(120, f/100*120));
+  const color = `hsl(${hue},78%,50%)`;
+  let label, sub, roleLabel, roleColor;
+  if(f<FORM_BENCH_THRESHOLD){ label='🪑 Banquillo'; sub='El entrenador no confía en tu momento de forma — empezarás suplente. Si sales al campo, aprovéchalo.'; roleLabel='Suplente'; roleColor='var(--danger)'; }
+  else if(f<70){ label='🟡 En el once, bajo observación'; sub='Eres titular, pero un mal partido puede hacer que el entrenador te saque del campo.'; roleLabel='Titular'; roleColor='var(--gold)'; }
+  else { label='🟢 Titular indiscutible'; sub='El entrenador confía plenamente en ti.'; roleLabel='Titular'; roleColor='var(--accent)'; }
+  return {f,color,label,sub,roleLabel,roleColor};
+}
 function renderInicio(){
   const el=document.getElementById('tab-inicio');
   const fixture = currentFixture();
   const s=state.stats;
+  const fi = formInfo();
   el.innerHTML = `
     <div class="card">
       <h2>Próximo partido</h2>
-      <div class="sub">Jornada ${state.matchday} de ${state.schedule.length} · Temporada ${state.season}</div>
+      <div class="sub">Jornada ${state.matchday} de ${state.schedule.length} · Temporada ${state.season} · Empiezas: <b style="color:${fi.roleColor};">${fi.roleLabel}</b></div>
       <div class="next-match">
         <div class="vs-block">
           <div class="team-pill">
@@ -530,6 +559,12 @@ function renderInicio(){
         <button class="btn big" id="playMatchBtn">⚽ JUGAR PARTIDO</button>
       </div>
       <div class="ticker"><span>${tickerText()}</span></div>
+    </div>
+    <div class="card">
+      <h2>Forma con el entrenador</h2>
+      <div class="sub">${fi.sub}</div>
+      <div class="xpbar-outer" style="height:14px;"><div class="xpbar-inner" style="width:${fi.f}%;background:${fi.color};"></div></div>
+      <div style="margin-top:8px;font-weight:800;font-size:13px;">${fi.label}</div>
     </div>
     <div class="card">
       <h2>Resumen de carrera</h2>
@@ -645,7 +680,7 @@ function renderPlantilla(){
   el.innerHTML = `
     <div class="card">
       <h2>Plantilla</h2>
-      <div class="sub">${CLUBS[state.clubIdx].name} · Formación reducida 3+portero. Desde el menú de pausa en partido puedes hacer hasta 3 cambios.</div>
+      <div class="sub">${CLUBS[state.clubIdx].name} · Formación reducida 3+portero. Los cambios en partido los decide el entrenador según tu rendimiento y tu forma — no los eliges tú.</div>
       <div class="custom-section-title">Titulares</div>
       <div class="squad-grid">
         <div class="squad-card you"><div class="pos-tag">DEL</div><div class="pname">${state.playerName} (Tú)</div><div class="povr">${overall(state.stats)}</div></div>
@@ -804,51 +839,68 @@ function bindMatchControls(){
   };
 }
 function openPauseModal(){
+  const statusLine = match.player.userControlled
+    ? '✅ Estás en el campo.'
+    : `🪑 Estás en el banquillo — ${match.playerBenched && match.subDecided ? 'el entrenador te sacó' : 'juega ' + match.standIn.name + ' en tu lugar'}.`;
   openModal(`<h3>Partido en pausa</h3><div class="sub" style="margin-top:6px;">${CLUBS[state.clubIdx].name} ${match.scoreA} - ${match.scoreB} ${CLUBS[match.rivalIdx].name}</div>
+    <div class="sub" style="margin-top:4px;">${statusLine} Las decisiones de cambio las toma el entrenador, no tú.</div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
       <button class="btn secondary" id="resumeBtn" style="flex:1;">Reanudar</button>
-      <button class="btn" id="subsBtn" style="flex:1;" ${match.subsUsed>=3?'disabled':''}>🔄 Cambios (${match.subsUsed}/3)</button>
       <button class="btn danger" id="forfeitBtn" style="flex:1;">Abandonar</button>
     </div>`);
   document.getElementById('resumeBtn').onclick=()=>{ match.paused=false; closeModal(); };
-  document.getElementById('subsBtn').onclick=()=> openSubsModal();
   document.getElementById('forfeitBtn').onclick=()=>{ closeModal(); endMatch(true); };
 }
-function openSubsModal(){
-  const bench = state.squad.bench.filter(b=>!match.usedBenchIds.includes(b.id));
-  let html = `<h3>Cambios</h3><div class="sub" style="margin-top:4px;">Elige a quién sacar y luego quién entra.</div>
-    <div class="custom-section-title">Sacar</div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      ${match.mates.map((m,i)=>`<button class="chip-btn" data-out="${i}" style="text-align:left;padding:10px 12px;">${m.name}</button>`).join('')}
-    </div>
-    <div class="custom-section-title">Entra</div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      ${bench.length? bench.map(b=>`<button class="chip-btn" data-in="${b.id}" style="text-align:left;padding:10px 12px;">${b.name} · ${b.pos} · ${b.ovr} OVR</button>`).join('') : '<div class="sub">No quedan suplentes disponibles.</div>'}
-    </div>
-    <div style="margin-top:14px;"><button class="btn secondary" id="backToPauseBtn" style="width:100%;">Volver</button></div>`;
-  openModal(html);
-  let selectedOut=null;
-  document.querySelectorAll('[data-out]').forEach(b=> b.onclick=()=>{
-    selectedOut=+b.dataset.out;
-    document.querySelectorAll('[data-out]').forEach(x=>x.classList.remove('active'));
-    b.classList.add('active');
-  });
-  document.querySelectorAll('[data-in]').forEach(b=> b.onclick=()=>{
-    if(selectedOut===null){ toast('Primero elige a quién sacar'); return; }
-    const benchPlayer = state.squad.bench.find(x=>x.id===b.dataset.in);
-    doSubstitution(selectedOut, benchPlayer);
-  });
-  document.getElementById('backToPauseBtn').onclick=()=> openPauseModal();
+
+/* ---- coach-driven substitutions ---- */
+function pickBenchStandIn(){
+  const bench = state.squad.bench;
+  return bench[Math.floor(Math.random()*bench.length)] || {name:'un suplente'};
 }
-function doSubstitution(mateIndex, benchPlayer){
-  const mate = match.mates[mateIndex];
-  const outName = mate.name;
-  mate.name = benchPlayer.name;
-  mate.freshBoost = 1.12;
-  match.usedBenchIds.push(benchPlayer.id);
-  match.subsUsed++;
-  closeModal();
-  toast(`🔄 Cambio: entra ${benchPlayer.name} por ${outName}`);
+function updateBenchPanel(){
+  const panel=document.getElementById('benchPanel'); if(!panel) return;
+  const cube=document.getElementById('benchCube');
+  if(match.player.userControlled){ panel.classList.remove('show'); }
+  else {
+    panel.classList.add('show');
+    cube.style.background = colorHex(state.equipped.color);
+    cube.style.color = colorHex(state.equipped.color);
+  }
+}
+function showSubBanner(text, color){
+  const banner=document.getElementById('goalBanner');
+  banner.style.color=color; banner.textContent=text;
+  banner.classList.add('show');
+  setTimeout(()=>banner.classList.remove('show'), 1600);
+}
+function bringPlayerOn(){
+  match.subDecided = true;
+  match.player.userControlled = true;
+  match.playerBenched = false;
+  updateBenchPanel();
+  toast(`🔥 El entrenador te manda calentar… ¡saltas al campo por ${match.standIn.name}!`);
+  showSubBanner('¡ENTRAS AL CAMPO!', 'var(--accent)');
+}
+function subPlayerOff(){
+  match.subDecided = true;
+  match.player.userControlled = false;
+  match.playerBenched = true;
+  updateBenchPanel();
+  toast(`🪑 El entrenador decide sacarte. Entra ${match.standIn.name} en tu lugar.`);
+  showSubBanner('EL ENTRENADOR TE CAMBIA', 'var(--gold)');
+}
+function coachTick(min){
+  if(match.paused || match.ended || match.subDecided) return;
+  if(!match.player.userControlled){
+    if(min>=match.subWindowMin) bringPlayerOn();
+  } else if(min>=55){
+    const losingBig = (match.scoreB-match.scoreA)>=2;
+    const noContribution = (match.perf.goals+match.perf.assists)===0;
+    let p=0;
+    if(losingBig && noContribution) p=0.06;
+    else if(noContribution && min>=75) p=0.035;
+    if(p>0 && Math.random()<p) subPlayerOff();
+  }
 }
 
 function bindMobileControls(){
@@ -892,6 +944,7 @@ function startMatch(){
   const fixture = currentFixture();
   const s = state.stats;
   const maxSpeed = 2.5 + (s.velocidad/99)*2.3;
+  const startAsSub = state.form < FORM_BENCH_THRESHOLD;
   match = {
     rivalIdx: fixture.rivalIdx, isHome: fixture.isHome,
     scoreA:0, scoreB:0, timeLeft:92, paused:false, ended:false,
@@ -899,9 +952,9 @@ function startMatch(){
     turbo:100, chargeStart:0, charging:false, facing:{x:1,y:0},
     perf:{goals:0, assists:0, recoveries:0},
     lastTeamPossession:null,
-    subsUsed:0, usedBenchIds:[],
+    playerBenched: startAsSub, subDecided:false, subWindowMin: 50+Math.floor(Math.random()*26), standIn: pickBenchStandIn(),
     ball:{x:FIELD_W/2,y:FIELD_H/2,vx:0,vy:0,r:9},
-    player:{x:300,y:FIELD_H/2,vx:0,vy:0,r:16,team:'me',id:'you',maxSpeed},
+    player:{x:300,y:FIELD_H/2,vx:0,vy:0,r:16,team:'me',id:'you',maxSpeed,userControlled:!startAsSub},
     mates:[
       {x:190,y:FIELD_H/2-110,vx:0,vy:0,r:15,team:'me',id:'mate1',role:'mid',name:'Compañero 1',home:{x:220,y:FIELD_H/2-110}},
       {x:190,y:FIELD_H/2+110,vx:0,vy:0,r:15,team:'me',id:'mate2',role:'mid',name:'Compañero 2',home:{x:220,y:FIELD_H/2+110}},
@@ -926,6 +979,8 @@ function startMatch(){
   document.getElementById('hudAway').textContent = CLUBS[fixture.rivalIdx].name;
   document.getElementById('hudScore').textContent = '0 - 0';
   document.getElementById('goalBanner').classList.remove('show');
+  updateBenchPanel();
+  if(startAsSub) toast(`🪑 Empiezas en el banquillo — juega ${match.standIn.name} en tu lugar. El entrenador decidirá si te mete.`);
   let last = performance.now();
   function loop(now){
     const dt = Math.min(40, now-last); last=now;
@@ -939,6 +994,7 @@ function startMatch(){
     match.timeLeft--;
     const mins = Math.floor((92-match.timeLeft)/92*90);
     document.getElementById('hudTimer').textContent = mins+"'";
+    coachTick(mins);
     if(match.timeLeft<=0){ endMatch(false); }
   },1000);
 }
@@ -957,6 +1013,11 @@ function stepMatch(dt){
 
 function handleInput(dt){
   const p = match.player;
+  if(!p.userControlled){
+    p.vx*=0.9; p.vy*=0.9;
+    if(match.charging){ match.charging=false; document.getElementById('powerFill').style.width='0%'; }
+    return;
+  }
   let ix=0, iy=0, turboHeld=false, kickHeld=false;
   if(state.settings.controlMode==='mobile'){
     ix=touchInput.ix; iy=touchInput.iy; turboHeld=touchInput.turbo; kickHeld=touchInput.kick;
@@ -1002,11 +1063,11 @@ function tryKick(entity, powerRatio, aimOverride){
   const s = state.stats;
   const skillMul = entity.team==='me' ? (0.75 + s.tiro/99*0.6) : 1;
   const power = (4.2 + powerRatio*9.5) * skillMul;
-  let dirx=aimOverride?aimOverride.x:match.facing.x, diry=aimOverride?aimOverride.y:match.facing.y;
-  if(entity!==match.player && !aimOverride){
-    dirx = ball.x - entity.x; diry = ball.y - entity.y;
-    const l=Math.hypot(dirx,diry)||1; dirx/=l; diry/=l;
-  }
+  const useUserAim = entity===match.player && entity.userControlled && !aimOverride;
+  let dirx, diry;
+  if(useUserAim){ dirx=match.facing.x; diry=match.facing.y; }
+  else if(aimOverride){ dirx=aimOverride.x; diry=aimOverride.y; }
+  else { dirx = ball.x - entity.x; diry = ball.y - entity.y; const l=Math.hypot(dirx,diry)||1; dirx/=l; diry/=l; }
   const len=Math.hypot(dirx,diry)||1;
   ball.vx = (dirx/len)*power; ball.vy=(diry/len)*power;
   registerTouch(entity);
@@ -1016,7 +1077,7 @@ function tryKick(entity, powerRatio, aimOverride){
 function registerTouch(entity){
   const team = entity.team;
   if(match.lastToucher && match.lastToucher.team!==team && team==='me' && entity.id!=='gkMe'){
-    if(entity.id==='you') match.perf.recoveries++, state.career.recoveries++;
+    if(entity.id==='you' && entity.userControlled) match.perf.recoveries++, state.career.recoveries++;
   }
   match.prevToucher = match.lastToucher;
   match.lastToucher = entity;
@@ -1024,11 +1085,12 @@ function registerTouch(entity){
 }
 
 function runAI(){
-  const ball=match.ball;
-  aiFor(match.mates, match.opps, match.gkOpp, 'me');
-  aiFor(match.opps, [match.player,...match.mates], match.gkMe, 'opp');
+  const meAI = match.player.userControlled ? match.mates.slice() : [...match.mates, match.player];
+  const oppAsEnemy = match.player.userControlled ? [match.player,...match.mates] : match.mates.slice();
+  aiFor(meAI, match.opps, match.gkOpp, 'me');
+  aiFor(match.opps, oppAsEnemy, match.gkMe, 'opp');
   gkBehavior(match.gkMe, 0, match.opps);
-  gkBehavior(match.gkOpp, FIELD_W, [match.player,...match.mates]);
+  gkBehavior(match.gkOpp, FIELD_W, oppAsEnemy);
 }
 
 function aiFor(list, enemies, enemyGK, teamTag){
@@ -1129,8 +1191,8 @@ function onGoal(team){
   const banner=document.getElementById('goalBanner');
   if(team==='me'){
     match.scoreA++;
-    if(match.lastToucher && match.lastToucher.id==='you'){ match.perf.goals++; state.career.goals++; }
-    else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you'){ match.perf.assists++; state.career.assists++; }
+    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; }
+    else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; }
     banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
   } else {
     match.scoreB++;
@@ -1174,7 +1236,7 @@ function drawMatch(){
   }
 
   const trail = match._trail || (match._trail=[]);
-  if(state.equipped.trail!=='none'){
+  if(state.equipped.trail!=='none' && match.player.userControlled){
     trail.push({x:match.player.x,y:match.player.y});
     if(trail.length>14) trail.shift();
     trail.forEach((t,i)=>{
@@ -1189,7 +1251,11 @@ function drawMatch(){
   match.mates.forEach(m=>drawCube(ctx, m, CLUBS[state.clubIdx].color+'aa', '#0a0e1a', ''));
   match.opps.forEach(o=>drawCube(ctx, o, CLUBS[match.rivalIdx].color, '#0a0e1a', ''));
   drawCube(ctx, match.gkOpp, CLUBS[match.rivalIdx].color+'55', '#ffffff', 'PT');
-  drawCube(ctx, match.player, colorHex(state.equipped.color), colorHex(state.equipped.secondary), '', true);
+  if(match.player.userControlled){
+    drawCube(ctx, match.player, colorHex(state.equipped.color), colorHex(state.equipped.secondary), '', true);
+  } else {
+    drawCube(ctx, match.player, CLUBS[state.clubIdx].color+'aa', '#0a0e1a', '');
+  }
 
   ctx.beginPath(); ctx.fillStyle='#f5f7ff'; ctx.arc(match.ball.x, match.ball.y, match.ball.r, 0, Math.PI*2); ctx.fill();
   ctx.strokeStyle='#222'; ctx.lineWidth=1.2; ctx.stroke();
@@ -1219,13 +1285,21 @@ function endMatch(forfeited){
   simulateOtherMatches();
 
   state.career.matches++;
-  let xp = 15 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  const neverPlayed = match.playerBenched && !match.subDecided;
+  let xp = neverPlayed ? 4 : 15 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
   let outcome='Empate';
-  if(match.scoreA>match.scoreB){ xp+=25; outcome='Victoria'; }
+  if(match.scoreA>match.scoreB){ xp+=neverPlayed?0:25; outcome='Victoria'; }
   else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
 
+  updateForm(outcome);
+
+  let roleNote = '';
+  if(neverPlayed) roleNote = ' No llegaste a saltar al campo — el entrenador prefirió no arriesgar.';
+  else if(match.playerBenched && match.subDecided) roleNote = ' El entrenador decidió sacarte del campo antes del final.';
+  else if(!match.playerBenched && match.subDecided) roleNote = ' Entraste desde el banquillo y dejaste tu huella.';
+
   addMail(`Resultado: ${CLUBS[state.clubIdx].name} ${match.scoreA}-${match.scoreB} ${CLUBS[match.rivalIdx].name}`,
-    `${outcome}. Contribuiste con ${match.perf.goals} gol(es), ${match.perf.assists} asistencia(s) y ${match.perf.recoveries} recuperación(es). Ganaste ${xp} XP.`, 'Resultado');
+    `${outcome}. Contribuiste con ${match.perf.goals} gol(es), ${match.perf.assists} asistencia(s) y ${match.perf.recoveries} recuperación(es). Ganaste ${xp} XP.${roleNote}`, 'Resultado');
 
   const levelUps = grantXP(xp, match.perf);
 
@@ -1246,6 +1320,18 @@ function simulateOtherMatches(){
     const [gh,ga]=simulateCPU(CLUBS[h].power, CLUBS[a].power);
     applyResultToTable(state.table, h, a, gh, ga);
   });
+}
+
+function updateForm(outcome){
+  const neverPlayed = match.playerBenched && !match.subDecided;
+  let delta;
+  if(neverPlayed){
+    delta = 4;
+  } else {
+    delta = (outcome==='Victoria'?8:(outcome==='Derrota'?-8:2)) + match.perf.goals*5 + match.perf.assists*3 + match.perf.recoveries*1;
+    if(match.playerBenched) delta -= 10;
+  }
+  state.form = Math.max(0, Math.min(100, Math.round(state.form + delta)));
 }
 
 function grantXP(xp, perf){
@@ -1328,6 +1414,12 @@ function showResultModal(outcome, xp, levelUps, seasonEnded){
       <div class="mini-stat"><div class="v">${match.perf.recoveries}</div><div class="k">Recuperaciones</div></div>
       <div class="mini-stat"><div class="v">+${xp}</div><div class="k">XP ganada</div></div>
     </div>`;
+  const neverPlayed = match.playerBenched && !match.subDecided;
+  let roleNote='';
+  if(neverPlayed) roleNote='🪑 No saltaste al campo este partido.';
+  else if(match.playerBenched && match.subDecided) roleNote='🔄 El entrenador te sacó antes del final.';
+  else if(!match.playerBenched && match.subDecided) roleNote='🔥 Entraste desde el banquillo.';
+  if(roleNote) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(56,189,248,0.12);border:1px solid rgba(56,189,248,0.3);font-size:13px;">${roleNote}</div>`;
   if(seasonEnded) html += `<div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">📅 Temporada finalizada — revisa tu buzón. Empieza la Temporada ${state.season}.</div>`;
   html += `<div style="margin-top:18px;"><button class="btn big" id="resultContinueBtn" style="width:100%;">Continuar</button></div>`;
   openModal(html);
