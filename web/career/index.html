@@ -149,6 +149,7 @@ button{ font-family:inherit; }
 .item-card[data-rarity="epic"]::after{ content:''; position:absolute; inset:0; background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,0.35) 50%,transparent 70%); transform:translateX(-100%); animation: shimmer-sweep 2.6s ease-in-out infinite; }
 .item-card[data-rarity="legendary"]{ animation:aura-pulse-l 1.8s ease-in-out infinite; }
 .item-card[data-rarity="mythic"]{ animation:aura-pulse-m 1.6s ease-in-out infinite; }
+.item-card[data-rarity="secret"]{ animation:aura-pulse-m 1.6s ease-in-out infinite, secret-cycle 4s linear infinite; }
 .item-card[data-rarity="divine"]{ animation:aura-pulse-d 1.5s ease-in-out infinite; }
 .item-card[data-rarity="forbidden"]{ animation:aura-pulse-f 1.3s ease-in-out infinite; }
 @keyframes shimmer-sweep{ 0%,60%{transform:translateX(-100%);} 100%{transform:translateX(100%);} }
@@ -156,11 +157,13 @@ button{ font-family:inherit; }
 @keyframes aura-pulse-m{ 0%,100%{box-shadow:0 0 18px 3px var(--mythic);} 50%{box-shadow:0 0 32px 9px var(--mythic);} }
 @keyframes aura-pulse-d{ 0%,100%{box-shadow:0 0 22px 5px #fff;} 50%{box-shadow:0 0 40px 14px #fff;} }
 @keyframes aura-pulse-f{ 0%,100%{box-shadow:0 0 24px 6px var(--forbidden);} 50%{box-shadow:0 0 44px 16px var(--forbidden);} }
+@keyframes secret-cycle{ 0%{filter:hue-rotate(0deg);} 100%{filter:hue-rotate(360deg);} }
 .rarity-common{background:rgba(156,163,175,0.18); color:#c7cbd6;}
 .rarity-rare{background:rgba(59,130,246,0.18); color:#7db4ff;}
 .rarity-epic{background:rgba(168,85,247,0.2); color:#d3a4ff;}
 .rarity-legendary{background:rgba(245,158,11,0.2); color:#ffcd7a;}
 .rarity-mythic{background:rgba(239,68,68,0.2); color:#ff9c9c;}
+.rarity-secret{background:rgba(56,189,248,0.2); color:#7fdcff;}
 .rarity-divine{background:rgba(255,255,255,0.2); color:#fff;}
 .rarity-forbidden{background:rgba(255,47,176,0.22); color:#ff8fe0;}
 
@@ -309,6 +312,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div class="xplabel"><span id="xpText">0 / 0 XP</span><span id="seasonText">Temporada 1</span></div>
       </div>
       <div class="lvl-badge" id="lvlBadge">1</div>
+      <button class="gear-btn" id="musicBtn" title="Música">🔇</button>
       <button class="gear-btn" id="settingsBtn" title="Ajustes">⚙️</button>
     </div>
 
@@ -331,7 +335,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v8 — partido jugable (ordenador o móvil) + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
+    <div class="footer-note">Cube League: Career · v9 — música de menú (🔊 en la barra) + explosiones de gol propias + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -554,8 +558,11 @@ const TRAIL_ITEMS = [
   {id:'none', label:'Sin estela', rarity:'common', unlockLevel:1},
   {id:'spark', label:'Chispa', rarity:'common', unlockLevel:1},
   {id:'trail_blue', label:'Estela Azul', rarity:'rare', unlockLevel:3},
+  {id:'trail_plasma', label:'Plasma', rarity:'epic', unlockLevel:7},
   {id:'trail_fire', label:'Estela de Fuego', rarity:'legendary', unlockLevel:8},
   {id:'trail_void', label:'Estela del Vacío', rarity:'mythic', unlockLevel:16},
+  {id:'trail_rays', label:'Rayos', rarity:'secret', unlockLevel:17},
+  {id:'trail_crystal', label:'Cristal', rarity:'divine', unlockLevel:21},
 ];
 const CELEB_ITEMS = [
   {id:'jump', label:'Salto Básico', rarity:'common', unlockLevel:1},
@@ -564,15 +571,26 @@ const CELEB_ITEMS = [
   {id:'eclipse', label:'Celebración Eclipse', rarity:'mythic', unlockLevel:13},
   {id:'forbidden', label:'Explosión Prohibida', rarity:'forbidden', unlockLevel:25},
 ];
-const LEVEL_UNLOCK_ANNOUNCE = {2:'sunset',3:'trail_blue',5:'toxic',6:'backflip',8:'trail_fire',10:'galaxy',13:'eclipse',16:'trail_void',20:'divine',25:'forbidden'};
+const GOAL_EXPLOSION_ITEMS = [
+  {id:'classic', label:'Estallido Clásico', rarity:'common', color:'#ffe58a', unlockLevel:1},
+  {id:'storm', label:'Tormenta', rarity:'rare', color:'#38bdf8', unlockLevel:4},
+  {id:'tsunami', label:'Tsunami', rarity:'epic', color:'#22d3ee', unlockLevel:9},
+  {id:'galaxy_fx', label:'Galaxia', rarity:'legendary', color:'#a855f7', unlockLevel:11},
+  {id:'blackhole', label:'Agujero Negro', rarity:'mythic', color:'#ef4463', unlockLevel:14},
+  {id:'dragon', label:'Dragón de Luz', rarity:'secret', color:'#f5b942', unlockLevel:19},
+  {id:'divine_fx', label:'Divina', rarity:'divine', color:'#ffffff', unlockLevel:23},
+  {id:'forbidden_fx', label:'Prohibida', rarity:'forbidden', color:'#ff2fb0', unlockLevel:27},
+];
+const LEVEL_UNLOCK_ANNOUNCE = {2:'sunset',3:'trail_blue',4:'storm',5:'toxic',6:'backflip',7:'trail_plasma',8:'trail_fire',9:'tsunami',10:'galaxy',11:'galaxy_fx',13:'eclipse',14:'blackhole',16:'trail_void',17:'trail_rays',19:'dragon',20:'divine',21:'trail_crystal',23:'divine_fx',25:'forbidden',27:'forbidden_fx'};
 const ALL_COSMETICS = [
   ...COLOR_ITEMS.map(i=>({...i, field:'color'})),
   ...TRAIL_ITEMS.map(i=>({...i, field:'trail'})),
   ...CELEB_ITEMS.map(i=>({...i, field:'celeb'})),
+  ...GOAL_EXPLOSION_ITEMS.map(i=>({...i, field:'explosion'})),
 ];
-const RARITY_WEIGHTS = [['common',42],['rare',27],['epic',16],['legendary',9],['mythic',4.3],['divine',1],['forbidden',0.4]];
-const RARITY_ICONS = {common:'🎁',rare:'🎁',epic:'💎',legendary:'👑',mythic:'🔥',divine:'✨',forbidden:'☠️'};
-const RARITY_COLOR = {common:'#9CA3AF',rare:'#3B82F6',epic:'#A855F7',legendary:'#F59E0B',mythic:'#EF4444',divine:'#FFFFFF',forbidden:'#ff2fb0'};
+const RARITY_WEIGHTS = [['common',40],['rare',26],['epic',15],['legendary',8.5],['mythic',4.2],['secret',1.5],['divine',1],['forbidden',0.4]];
+const RARITY_ICONS = {common:'🎁',rare:'🎁',epic:'💎',legendary:'👑',mythic:'🔥',secret:'🌀',divine:'✨',forbidden:'☠️'};
+const RARITY_COLOR = {common:'#9CA3AF',rare:'#3B82F6',epic:'#A855F7',legendary:'#F59E0B',mythic:'#EF4444',secret:'#38bdf8',divine:'#FFFFFF',forbidden:'#ff2fb0'};
 
 const WEATHER_TYPES = [
   {id:'sunny', label:'Soleado', icon:'☀️'},
@@ -598,8 +616,8 @@ function freshState(){
     clubIdx: 0,
     level: 1, xp: 0,
     stats: { velocidad:58, tiro:55, pase:56, regate:57, defensa:50, fisico:55 },
-    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump', playstyle:null },
-    unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'] },
+    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump', explosion:'classic', playstyle:null },
+    unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'], explosion:['classic'] },
     unlockedPlaystyles: [],
     career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0, cupTrophies:0, balonCube:0 },
     form: 55,
@@ -691,6 +709,8 @@ async function init(){
   if(!state.trophyHistory) state.trophyHistory = [];
   if(!state.unlockedPlaystyles) state.unlockedPlaystyles = [];
   if(state.equipped.playstyle===undefined) state.equipped.playstyle = null;
+  if(!state.equipped.explosion) state.equipped.explosion = 'classic';
+  if(!state.unlocked.explosion) state.unlocked.explosion = ['classic'];
   if(state.career.balonCube===undefined) state.career.balonCube = 0;
   if(!state.fanMail) state.fanMail = [];
   if(!state.schedule){ state.schedule = generateSchedule(); }
@@ -704,6 +724,7 @@ async function init(){
   bindMatchControls();
   bindMobileControls();
   bindSettingsButton();
+  bindMusicButton();
 }
 async function save(){ await storageSet(STORAGE_KEY, JSON.stringify(state)); }
 
@@ -711,6 +732,56 @@ function toast(msg){
   const wrap=document.getElementById('toast-wrap');
   const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
   wrap.appendChild(t); setTimeout(()=>t.remove(), 2800);
+}
+
+/* ============ MENU MUSIC (procedural, no external files) ============ */
+let audioCtx=null, musicPlaying=false, musicTimer=null, musicMaster=null;
+function ensureAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+function bindMusicButton(){
+  document.getElementById('musicBtn').onclick = toggleMusic;
+}
+function toggleMusic(){
+  const ctx = ensureAudioCtx();
+  musicPlaying = !musicPlaying;
+  if(musicPlaying) startMusicLoop(ctx); else stopMusicLoop();
+  updateMusicButton();
+}
+function updateMusicButton(){
+  const btn=document.getElementById('musicBtn'); if(!btn) return;
+  btn.textContent = musicPlaying ? '🔊' : '🔇';
+}
+function playTone(ctx, dest, freq, startTime, duration, type, peakGain){
+  const osc=ctx.createOscillator(); osc.type=type; osc.frequency.value=freq;
+  const g=ctx.createGain(); g.gain.setValueAtTime(0.0001,startTime);
+  g.gain.linearRampToValueAtTime(peakGain, startTime+0.06);
+  g.gain.exponentialRampToValueAtTime(0.0001, startTime+duration);
+  osc.connect(g); g.connect(dest);
+  osc.start(startTime); osc.stop(startTime+duration+0.05);
+}
+function startMusicLoop(ctx){
+  musicMaster = ctx.createGain(); musicMaster.gain.value=0.055; musicMaster.connect(ctx.destination);
+  const bassPattern=[110,110,146.83,130.81];
+  const scale=[220,246.94,261.63,293.66,329.63,349.23,392.00];
+  let step=0;
+  function scheduleStep(){
+    if(!musicPlaying) return;
+    const t = ctx.currentTime;
+    playTone(ctx, musicMaster, bassPattern[step%4], t, 0.9, 'triangle', 0.5);
+    if(Math.random()<0.65){
+      const note = scale[Math.floor(Math.random()*scale.length)];
+      playTone(ctx, musicMaster, note, t+0.1, 0.5, 'sine', 0.16);
+    }
+    step++;
+    musicTimer = setTimeout(scheduleStep, 950);
+  }
+  scheduleStep();
+}
+function stopMusicLoop(){
+  if(musicTimer){ clearTimeout(musicTimer); musicTimer=null; }
 }
 
 function showTravelScreen(label, onDone){
@@ -899,6 +970,8 @@ function renderJugador(){
       <div class="trail-grid" id="trailRow"></div>
       <div class="custom-section-title">Celebración de gol</div>
       <div class="celeb-grid" id="celebRow"></div>
+      <div class="custom-section-title">Explosión de gol</div>
+      <div class="celeb-grid" id="explosionRow"></div>
     </div>
     <div class="card">
       <h2>Playstyle</h2>
@@ -917,6 +990,7 @@ function renderJugador(){
   buildSwatches('secRow', COLOR_ITEMS, 'secondary', true);
   buildItemGrid('trailRow', TRAIL_ITEMS, 'trail');
   buildItemGrid('celebRow', CELEB_ITEMS, 'celeb');
+  buildItemGrid('explosionRow', GOAL_EXPLOSION_ITEMS, 'explosion');
   buildPlaystyleGrid();
 }
 function buildPlaystyleGrid(){
@@ -1360,6 +1434,7 @@ function bindMobileControls(){
 }
 
 function startMatch(mode){
+  stopMusicLoop();
   const isCup = mode==='cup';
   const s = state.stats;
   let rivalIdx=null, rival, isHome=true;
@@ -1702,7 +1777,7 @@ function onGoal(team){
   const banner=document.getElementById('goalBanner');
   if(team==='me'){
     match.scoreA++;
-    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; }
+    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); }
     else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; state.seasonStats.assists++; }
     banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
   } else {
@@ -1717,6 +1792,16 @@ function onGoal(team){
   const fieldWrap=document.querySelector('.field-wrap');
   if(fieldWrap){ fieldWrap.classList.add('shake'); setTimeout(()=>fieldWrap.classList.remove('shake'), 420); }
   resetKickoff(team==='me'?'opp':'me');
+}
+function spawnGoalExplosion(){
+  const item = GOAL_EXPLOSION_ITEMS.find(i=>i.id===state.equipped.explosion) || GOAL_EXPLOSION_ITEMS[0];
+  const count = {common:14,rare:20,epic:28,legendary:38,mythic:48,secret:55,divine:65,forbidden:80}[item.rarity] || 14;
+  const particles = Array.from({length:count}, ()=>({
+    x: match.ball.x, y: match.ball.y,
+    vx:(Math.random()-0.5)*6.5, vy:(Math.random()-0.5)*6.5,
+    life:1, size:2+Math.random()*3,
+  }));
+  match._goalFx = { color:item.color, particles, timer:1.3 };
 }
 function resetKickoff(startingTeam){
   const ball=match.ball;
@@ -1783,6 +1868,19 @@ function drawMatch(){
     fx.timer -= 0.06;
   }
 
+  if(match._goalFx && match._goalFx.timer>0){
+    const fx=match._goalFx;
+    ctx.save();
+    fx.particles.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.02;
+      ctx.globalAlpha=Math.max(0,p.life);
+      ctx.fillStyle=fx.color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+    fx.timer -= 0.03;
+  }
+
   drawWeather(ctx);
   updateActionButtonUI();
 }
@@ -1792,7 +1890,7 @@ function updateActionButtonUI(){
   btn.classList.toggle('ready', !!ctx);
   btn.textContent = ctx ? (ctx.type==='dribble' ? '🔄' : '🛡') : '⚔️';
 }
-function trailColorFor(id){ return {spark:'#ffe58a',trail_blue:'#38bdf8',trail_fire:'#ff7a3c',trail_void:'#a855f7'}[id]||'#ffe58a'; }
+function trailColorFor(id){ return {spark:'#ffe58a',trail_blue:'#38bdf8',trail_plasma:'#e879f9',trail_fire:'#ff7a3c',trail_void:'#a855f7',trail_rays:'#fef08a',trail_crystal:'#e0f2fe'}[id]||'#ffe58a'; }
 function ensureWeatherParticles(){
   if(!match._weatherParticles){
     const isRain = match.weather.id==='rain'||match.weather.id==='storm';
@@ -2039,14 +2137,11 @@ function levelUpRewards(perf){
   const unlockId = LEVEL_UNLOCK_ANNOUNCE[state.level];
   let unlockItem=null;
   if(unlockId){
-    [COLOR_ITEMS,TRAIL_ITEMS,CELEB_ITEMS].forEach(list=>{
-      const found=list.find(i=>i.id===unlockId);
-      if(found){
-        const field = list===COLOR_ITEMS?'color':(list===TRAIL_ITEMS?'trail':'celeb');
-        if(!state.unlocked[field].includes(unlockId)) state.unlocked[field].push(unlockId);
-        unlockItem=found;
-      }
-    });
+    const found = ALL_COSMETICS.find(i=>i.id===unlockId);
+    if(found){
+      if(!state.unlocked[found.field].includes(unlockId)) state.unlocked[found.field].push(unlockId);
+      unlockItem = found;
+    }
   }
   return {level:state.level, gains, unlockItem};
 }
@@ -2132,6 +2227,7 @@ function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope, cupNot
     document.getElementById('match-wrap').classList.remove('active');
     document.getElementById('hq-wrap').classList.remove('hidden');
     renderAll();
+    if(musicPlaying && audioCtx) startMusicLoop(audioCtx);
     const afterEnvelope = ()=>{ if(levelUps && levelUps.length) playLevelUpSequence(levelUps, 0); };
     if(wonEnvelope) openEnvelopeSequence(wonEnvelope, afterEnvelope);
     else afterEnvelope();
