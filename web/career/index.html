@@ -335,7 +335,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v11 — negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + explosiones de gol propias + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
+    <div class="footer-note">Cube League: Career · v12 — Champions Cube + Mundial de Cubos + Marcos + Emotes + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + explosiones de gol + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -541,6 +541,52 @@ function prepareCupOpponent(){
   save();
 }
 
+/* ---- Champions Cube (clasificación: top 3 de liga o campeón la temporada anterior) ---- */
+const CHAMPIONS_FILLER_TEAMS = [
+  {name:'Estrella Boreal', color:'#60a5fa', power:80},
+  {name:'Fénix Dorado', color:'#fbbf24', power:82},
+  {name:'Cubo Imperial', color:'#f87171', power:79},
+  {name:'Tridente Azul', color:'#34d399', power:81},
+];
+const CHAMPIONS_STAGES = ['quarterfinal','semifinal','final'];
+const CHAMPIONS_STAGE_LABEL = {quarterfinal:'Cuartos de final', semifinal:'Semifinal', final:'Final'};
+function championsStageIndex(stage){ return Math.max(0, CHAMPIONS_STAGES.indexOf(stage)); }
+function championsOpponentPool(){
+  const clubOpponents = CLUBS.map((c,i)=> (i===state.clubIdx || c.power<68) ? null : {name:c.name, color:c.color, power:c.power}).filter(Boolean);
+  return [...clubOpponents, ...CHAMPIONS_FILLER_TEAMS];
+}
+function makeChampions(season, qualified){
+  return { season, qualified, stage:'quarterfinal', opponent:null, eliminated:false, champion:false, facedNames:[] };
+}
+function prepareChampionsOpponent(){
+  if(state.champions.opponent) return;
+  const pool = championsOpponentPool().filter(o=>!state.champions.facedNames.includes(o.name));
+  const source = pool.length ? pool : championsOpponentPool();
+  state.champions.opponent = source[Math.floor(Math.random()*source.length)];
+  save();
+}
+
+/* ---- Mundial de Cubos (convocatoria cada 4 temporadas) ---- */
+const WORLDCUP_FILLER_TEAMS = [
+  {name:'Selección Ibérica Cube', color:'#ef4444', power:85},
+  {name:'Escuadra Nórdica', color:'#60a5fa', power:84},
+  {name:'Furia Austral', color:'#fbbf24', power:86},
+  {name:'Dragones de Oriente', color:'#a855f7', power:87},
+];
+const WORLDCUP_STAGES = ['quarterfinal','semifinal','final'];
+const WORLDCUP_STAGE_LABEL = {quarterfinal:'Cuartos de final', semifinal:'Semifinal', final:'Final'};
+function worldCupStageIndex(stage){ return Math.max(0, WORLDCUP_STAGES.indexOf(stage)); }
+function prepareWorldCupOpponent(){
+  if(state.worldcup.opponent) return;
+  const pool = WORLDCUP_FILLER_TEAMS.filter(o=>!state.worldcup.facedNames.includes(o.name));
+  const source = pool.length ? pool : WORLDCUP_FILLER_TEAMS;
+  state.worldcup.opponent = source[Math.floor(Math.random()*source.length)];
+  save();
+}
+function makeWorldCup(season, available){
+  return { season, available, stage:'quarterfinal', opponent:null, eliminated:false, champion:false, facedNames:[] };
+}
+
 /* ---- season goals ---- */
 function makeSeasonGoals(){
   return [
@@ -611,12 +657,34 @@ const GOAL_EXPLOSION_ITEMS = [
   {id:'divine_fx', label:'Divina', rarity:'divine', color:'#ffffff', unlockLevel:23},
   {id:'forbidden_fx', label:'Prohibida', rarity:'forbidden', color:'#ff2fb0', unlockLevel:27},
 ];
-const LEVEL_UNLOCK_ANNOUNCE = {2:'sunset',3:'trail_blue',4:'storm',5:'toxic',6:'backflip',7:'trail_plasma',8:'trail_fire',9:'tsunami',10:'galaxy',11:'galaxy_fx',13:'eclipse',14:'blackhole',16:'trail_void',17:'trail_rays',19:'dragon',20:'divine',21:'trail_crystal',23:'divine_fx',25:'forbidden',27:'forbidden_fx'};
+const FRAME_ITEMS = [
+  {id:'none', label:'Sin marco', rarity:'common', unlockLevel:1},
+  {id:'frame_bronze', label:'Marco de Bronce', rarity:'rare', unlockLevel:12},
+  {id:'frame_silver', label:'Marco de Plata', rarity:'epic', unlockLevel:15},
+  {id:'frame_gold', label:'Marco de Oro', rarity:'legendary', unlockLevel:18},
+  {id:'frame_champion', label:'Marco de Campeón', rarity:'mythic', unlockLevel:22},
+  {id:'frame_stellar', label:'Marco Estelar', rarity:'secret', unlockLevel:24},
+  {id:'frame_divine', label:'Marco Divino', rarity:'divine', unlockLevel:26},
+  {id:'frame_forbidden', label:'Marco Prohibido', rarity:'forbidden', unlockLevel:28},
+];
+const EMOTE_ITEMS = [
+  {id:'thumbsup', label:'Pulgar Arriba', rarity:'common', unlockLevel:1, emoji:'👍'},
+  {id:'fire', label:'En Racha', rarity:'rare', unlockLevel:29, emoji:'🔥'},
+  {id:'cool', label:'Tranquilo', rarity:'epic', unlockLevel:31, emoji:'😎'},
+  {id:'crown', label:'Realeza', rarity:'legendary', unlockLevel:33, emoji:'👑'},
+  {id:'alien', label:'Fuera de este Mundo', rarity:'mythic', unlockLevel:35, emoji:'👽'},
+  {id:'ghost', label:'Fantasma', rarity:'secret', unlockLevel:37, emoji:'👻'},
+  {id:'angel', label:'Angelical', rarity:'divine', unlockLevel:39, emoji:'😇'},
+  {id:'devil', label:'El Prohibido', rarity:'forbidden', unlockLevel:41, emoji:'😈'},
+];
+const LEVEL_UNLOCK_ANNOUNCE = {2:'sunset',3:'trail_blue',4:'storm',5:'toxic',6:'backflip',7:'trail_plasma',8:'trail_fire',9:'tsunami',10:'galaxy',11:'galaxy_fx',12:'frame_bronze',13:'eclipse',14:'blackhole',15:'frame_silver',16:'trail_void',17:'trail_rays',18:'frame_gold',19:'dragon',20:'divine',21:'trail_crystal',22:'frame_champion',23:'divine_fx',24:'frame_stellar',25:'forbidden',26:'frame_divine',27:'forbidden_fx',28:'frame_forbidden',29:'fire',31:'cool',33:'crown',35:'alien',37:'ghost',39:'angel',41:'devil'};
 const ALL_COSMETICS = [
   ...COLOR_ITEMS.map(i=>({...i, field:'color'})),
   ...TRAIL_ITEMS.map(i=>({...i, field:'trail'})),
   ...CELEB_ITEMS.map(i=>({...i, field:'celeb'})),
   ...GOAL_EXPLOSION_ITEMS.map(i=>({...i, field:'explosion'})),
+  ...FRAME_ITEMS.map(i=>({...i, field:'frame'})),
+  ...EMOTE_ITEMS.map(i=>({...i, field:'emote'})),
 ];
 const RARITY_WEIGHTS = [['common',40],['rare',26],['epic',15],['legendary',8.5],['mythic',4.2],['secret',1.5],['divine',1],['forbidden',0.4]];
 const RARITY_ICONS = {common:'🎁',rare:'🎁',epic:'💎',legendary:'👑',mythic:'🔥',secret:'🌀',divine:'✨',forbidden:'☠️'};
@@ -646,11 +714,11 @@ function freshState(){
     clubIdx: 0,
     level: 1, xp: 0,
     stats: { velocidad:58, tiro:55, pase:56, regate:57, defensa:50, fisico:55 },
-    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump', explosion:'classic', playstyle:null, title:'novato' },
-    unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'], explosion:['classic'] },
+    equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump', explosion:'classic', playstyle:null, title:'novato', frame:'none', emote:'thumbsup' },
+    unlocked: { color:['blue','red','green','purple','white'], trail:['none','spark'], celeb:['jump','clap'], explosion:['classic'], frame:['none'], emote:['thumbsup'] },
     unlockedPlaystyles: [],
     unlockedTitles: ['novato'],
-    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0, cupTrophies:0, balonCube:0, superCopa:0 },
+    career: { goals:0, assists:0, recoveries:0, matches:0, trophies:0, cupTrophies:0, balonCube:0, superCopa:0, championsTrophies:0, worldCups:0 },
     form: 55,
     season: 1, matchday: 1,
     schedule: null, table: null,
@@ -659,6 +727,8 @@ function freshState(){
     squad: { bench: generateBench() },
     cup: makeCup(1),
     supercopa: { available:false, opponent:null, wonWhat:null },
+    champions: makeChampions(1, false),
+    worldcup: makeWorldCup(1, false),
     seasonGoals: makeSeasonGoals(),
     seasonStats: { goals:0, assists:0, recoveries:0 },
     trainingDone: { velocidad:false, tiro:false, regate:false, defensa:false },
@@ -747,6 +817,14 @@ async function init(){
   if(!state.equipped.title) state.equipped.title = 'novato';
   if(state.career.superCopa===undefined) state.career.superCopa = 0;
   if(!state.supercopa) state.supercopa = { available:false, opponent:null, wonWhat:null };
+  if(!state.champions) state.champions = makeChampions(state.season, false);
+  if(!state.worldcup) state.worldcup = makeWorldCup(state.season, false);
+  if(!state.equipped.frame) state.equipped.frame = 'none';
+  if(!state.unlocked.frame) state.unlocked.frame = ['none'];
+  if(!state.equipped.emote) state.equipped.emote = 'thumbsup';
+  if(!state.unlocked.emote) state.unlocked.emote = ['thumbsup'];
+  if(state.career.championsTrophies===undefined) state.career.championsTrophies = 0;
+  if(state.career.worldCups===undefined) state.career.worldCups = 0;
   if(state.career.balonCube===undefined) state.career.balonCube = 0;
   if(!state.fanMail) state.fanMail = [];
   if(!state.schedule){ state.schedule = generateSchedule(); }
@@ -889,6 +967,36 @@ function supercopaCardHtml(){
     <button class="btn secondary" id="playSuperBtn">🏆 Jugar Supercopa</button>
   </div>`;
 }
+function championsCardHtml(){
+  if(!state.champions || !state.champions.qualified) return '';
+  if(state.champions.champion){
+    return `<div class="card"><h2>🌟 Champions Cube</h2><div class="sub">¡Eres el campeón de la Champions Cube de la Temporada ${state.season}!</div></div>`;
+  }
+  if(state.champions.eliminated){
+    return `<div class="card"><h2>Champions Cube</h2><div class="sub">Quedaste eliminado en ${CHAMPIONS_STAGE_LABEL[state.champions.stage]} esta temporada.</div></div>`;
+  }
+  const opp = state.champions.opponent;
+  return `<div class="card">
+    <h2>🌟 Champions Cube — ${CHAMPIONS_STAGE_LABEL[state.champions.stage]}</h2>
+    <div class="sub">${opp ? `Rival: <b>${opp.name}</b>` : 'Clasificado por tu temporada anterior. El rival se sortea al entrar.'}</div>
+    <button class="btn secondary" id="playChampionsBtn">🌟 Jugar Champions Cube</button>
+  </div>`;
+}
+function worldCupCardHtml(){
+  if(!state.worldcup || !state.worldcup.available) return '';
+  if(state.worldcup.champion){
+    return `<div class="card"><h2>🌍 Mundial de Cubos</h2><div class="sub">¡Eres el campeón del Mundial de Cubos de la Temporada ${state.season}!</div></div>`;
+  }
+  if(state.worldcup.eliminated){
+    return `<div class="card"><h2>Mundial de Cubos</h2><div class="sub">Quedaste eliminado en ${WORLDCUP_STAGE_LABEL[state.worldcup.stage]} de este Mundial.</div></div>`;
+  }
+  const opp = state.worldcup.opponent;
+  return `<div class="card">
+    <h2>🌍 Mundial de Cubos — ${WORLDCUP_STAGE_LABEL[state.worldcup.stage]}</h2>
+    <div class="sub">${opp ? `Rival: <b>${opp.name}</b>` : 'El seleccionador te ha convocado. El rival se sortea al entrar.'}</div>
+    <button class="btn secondary" id="playWorldCupBtn">🌍 Jugar Mundial</button>
+  </div>`;
+}
 function seasonGoalsCardHtml(){
   const rows = state.seasonGoals.map(g=>{
     const pct = g.type==='champion' ? (g.done?100:0) : Math.min(100,(g.progress/g.target)*100);
@@ -936,6 +1044,8 @@ function renderInicio(){
       </div>
       <div class="ticker"><span>${tickerText()}</span></div>
     </div>
+    ${worldCupCardHtml()}
+    ${championsCardHtml()}
     ${supercopaCardHtml()}
     ${cupCardHtml()}
     ${trainingCardHtml()}
@@ -973,6 +1083,16 @@ function renderInicio(){
   const superBtn=document.getElementById('playSuperBtn');
   if(superBtn) superBtn.onclick = ()=>{
     showTravelScreen(`🚌 Viajando a la Supercopa Cube — ${state.supercopa.opponent.name}…`, ()=>startMatch('super'));
+  };
+  const championsBtn=document.getElementById('playChampionsBtn');
+  if(championsBtn) championsBtn.onclick = ()=>{
+    prepareChampionsOpponent();
+    showTravelScreen(`🚌 Viajando a la Champions Cube — ${state.champions.opponent.name}…`, ()=>startMatch('champions'));
+  };
+  const worldCupBtn=document.getElementById('playWorldCupBtn');
+  if(worldCupBtn) worldCupBtn.onclick = ()=>{
+    prepareWorldCupOpponent();
+    showTravelScreen(`🚌 Viajando al Mundial de Cubos — ${state.worldcup.opponent.name}…`, ()=>startMatch('worldcup'));
   };
   document.querySelectorAll('[data-train]').forEach(b=>{
     b.onclick = ()=>{
@@ -1024,6 +1144,10 @@ function renderJugador(){
       <div class="celeb-grid" id="celebRow"></div>
       <div class="custom-section-title">Explosión de gol</div>
       <div class="celeb-grid" id="explosionRow"></div>
+      <div class="custom-section-title">Marco</div>
+      <div class="celeb-grid" id="frameRow"></div>
+      <div class="custom-section-title">Emote</div>
+      <div class="celeb-grid" id="emoteRow"></div>
     </div>
     <div class="card">
       <h2>Playstyle</h2>
@@ -1048,6 +1172,8 @@ function renderJugador(){
   buildItemGrid('trailRow', TRAIL_ITEMS, 'trail');
   buildItemGrid('celebRow', CELEB_ITEMS, 'celeb');
   buildItemGrid('explosionRow', GOAL_EXPLOSION_ITEMS, 'explosion');
+  buildItemGrid('frameRow', FRAME_ITEMS, 'frame');
+  buildItemGrid('emoteRow', EMOTE_ITEMS, 'emote');
   buildPlaystyleGrid();
   buildTitleGrid();
 }
@@ -1092,7 +1218,15 @@ function drawBigCube(){
   const host=document.getElementById('bigCube'); if(!host) return;
   const c1=colorHex(state.equipped.color); const c2=colorHex(state.equipped.secondary);
   host.style.background = `linear-gradient(135deg, ${c1} 60%, ${c2} 60%)`;
-  host.style.boxShadow = `0 0 30px ${c1}88`;
+  const frame = FRAME_ITEMS.find(f=>f.id===state.equipped.frame);
+  if(frame && frame.id!=='none'){
+    const fc = RARITY_COLOR[frame.rarity] || '#fff';
+    host.style.border = `3px solid ${fc}`;
+    host.style.boxShadow = `0 0 30px ${c1}88, 0 0 16px ${fc}aa`;
+  } else {
+    host.style.border = 'none';
+    host.style.boxShadow = `0 0 30px ${c1}88`;
+  }
 }
 function buildSwatches(hostId, list, field, isColor){
   const host=document.getElementById(hostId); host.innerHTML='';
@@ -1116,7 +1250,7 @@ function buildItemGrid(hostId, list, field){
     const card=document.createElement('div');
     card.className='item-card'+(unlocked?'':' locked')+(state.equipped[field]===item.id?' selectedcard':'');
     if(unlocked) card.setAttribute('data-rarity', item.rarity);
-    card.innerHTML = `<div style="font-weight:700;font-size:13px;">${unlocked?'':'🔒 '}${item.label}</div><span class="rarity-tag rarity-${item.rarity}">${rarityLabel(item.rarity)}</span>${unlocked?'':`<div style="font-size:10.5px;color:var(--muted);margin-top:6px;">Nivel ${item.unlockLevel}</div>`}`;
+    card.innerHTML = `<div style="font-weight:700;font-size:13px;">${unlocked?'':'🔒 '}${item.emoji?item.emoji+' ':''}${item.label}</div><span class="rarity-tag rarity-${item.rarity}">${rarityLabel(item.rarity)}</span>${unlocked?'':`<div style="font-size:10.5px;color:var(--muted);margin-top:6px;">Nivel ${item.unlockLevel}</div>`}`;
     card.onclick=()=>{
       if(!unlocked){ toast(`Se desbloquea en el nivel ${item.unlockLevel}`); return; }
       state.equipped[field]=item.id; save(); renderJugador();
@@ -1152,7 +1286,7 @@ function renderPlantilla(){
 function renderVida(){
   const el=document.getElementById('tab-vida');
   const {tier, next} = homeTier();
-  const TROPHY_LABELS = {liga:['🏆','Liga Cube'], copa:['🥇','Copa Cube'], balon:['⚽🏅','Balón Cube'], super:['🏆','Supercopa Cube']};
+  const TROPHY_LABELS = {liga:['🏆','Liga Cube'], copa:['🥇','Copa Cube'], balon:['⚽🏅','Balón Cube'], super:['🏆','Supercopa Cube'], champions:['🌟','Champions Cube'], mundial:['🌍','Mundial de Cubos']};
   const trophyRows = state.trophyHistory.length
     ? state.trophyHistory.slice().reverse().map(t=>{ const [ico,label]=TROPHY_LABELS[t.type]||['🏆',t.type]; return `<div class="trophy-row"><span>${ico}</span><span>${label} — Temporada ${t.season}</span></div>`; }).join('')
     : `<div class="empty-hint">Todavía no has ganado ningún título. ¡A por el primero!</div>`;
@@ -1174,7 +1308,7 @@ function renderVida(){
     </div>
     <div class="card">
       <h2>Vitrina de trofeos</h2>
-      <div class="sub">${state.career.trophies} Liga(s) · ${state.career.cupTrophies} Copa(s) · ${state.career.superCopa||0} Supercopa(s) · ${state.career.balonCube||0} Balón(es) Cube</div>
+      <div class="sub">${state.career.trophies} Liga(s) · ${state.career.cupTrophies} Copa(s) · ${state.career.superCopa||0} Supercopa(s) · ${state.career.championsTrophies||0} Champions · ${state.career.worldCups||0} Mundial(es) · ${state.career.balonCube||0} Balón(es) Cube</div>
       ${trophyRows}
     </div>
     <div class="card">
@@ -1536,22 +1670,32 @@ function startMatch(mode){
   stopMusicLoop();
   const isCup = mode==='cup';
   const isSuper = mode==='super';
+  const isChampions = mode==='champions';
+  const isWorldCup = mode==='worldcup';
   const s = state.stats;
   let rivalIdx=null, rival, isHome=true;
   if(isCup){
     rival = state.cup.opponent;
   } else if(isSuper){
     rival = state.supercopa.opponent;
+  } else if(isChampions){
+    rival = state.champions.opponent;
+  } else if(isWorldCup){
+    rival = state.worldcup.opponent;
   } else {
     const fixture = currentFixture();
     rivalIdx = fixture.rivalIdx; rival = CLUBS[fixture.rivalIdx]; isHome = fixture.isHome;
   }
-  const weatherSeed = isCup ? 200+cupStageIndex(state.cup.stage) : (isSuper ? 300 : state.matchday);
+  const weatherSeed = isCup ? 200+cupStageIndex(state.cup.stage)
+    : isSuper ? 300
+    : isChampions ? 400+championsStageIndex(state.champions.stage)
+    : isWorldCup ? 500+worldCupStageIndex(state.worldcup.stage)
+    : state.matchday;
   const weather = weatherForMatchday(state.season, weatherSeed);
   const maxSpeed = (2.5 + (s.velocidad/99)*2.3) * (WEATHER_SPEED_MUL[weather.id] ?? 1);
   const startAsSub = state.form < FORM_BENCH_THRESHOLD;
   match = {
-    isCup, isSuper, rivalIdx, rival, isHome, weather,
+    isCup, isSuper, isChampions, isWorldCup, rivalIdx, rival, isHome, weather,
     scoreA:0, scoreB:0, timeLeft:92, paused:false, ended:false,
     lastToucher:null, lastToucherPrevGoalTeam:null,
     turbo:100, chargeStart:0, charging:false, facing:{x:1,y:0},
@@ -1893,7 +2037,7 @@ function onGoal(team){
   const banner=document.getElementById('goalBanner');
   if(team==='me'){
     match.scoreA++;
-    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); match._lastGoalReplay = match._replayBuffer ? match._replayBuffer.slice() : []; }
+    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); spawnGoalEmote(); match._lastGoalReplay = match._replayBuffer ? match._replayBuffer.slice() : []; }
     else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; state.seasonStats.assists++; }
     banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
   } else {
@@ -1918,6 +2062,10 @@ function spawnGoalExplosion(){
     life:1, size:2+Math.random()*3,
   }));
   match._goalFx = { color:item.color, particles, timer:1.3 };
+}
+function spawnGoalEmote(){
+  const item = EMOTE_ITEMS.find(i=>i.id===state.equipped.emote) || EMOTE_ITEMS[0];
+  match._emoteFx = { emoji:item.emoji, x:match.player.x, y:match.player.y-30, timer:1.4 };
 }
 function resetKickoff(startingTeam){
   const ball=match.ball;
@@ -1995,6 +2143,17 @@ function drawMatch(){
     });
     ctx.restore();
     fx.timer -= 0.03;
+  }
+
+  if(match._emoteFx && match._emoteFx.timer>0){
+    const fx=match._emoteFx;
+    ctx.save();
+    ctx.globalAlpha=Math.max(0,Math.min(1,fx.timer));
+    ctx.font='26px sans-serif'; ctx.textAlign='center';
+    fx.y -= 0.4;
+    ctx.fillText(fx.emoji, fx.x, fx.y);
+    ctx.restore();
+    fx.timer -= 0.02;
   }
 
   drawWeather(ctx);
@@ -2076,6 +2235,8 @@ function endMatch(forfeited){
 
   if(match.isCup){ return endCupMatch(forfeited); }
   if(match.isSuper){ return endSuperMatch(forfeited); }
+  if(match.isChampions){ return endChampionsMatch(forfeited); }
+  if(match.isWorldCup){ return endWorldCupMatch(forfeited); }
 
   applyResultToTable(state.table, state.clubIdx, match.rivalIdx, match.scoreA, match.scoreB);
   simulateOtherMatches();
@@ -2191,6 +2352,100 @@ function endSuperMatch(forfeited){
     cupNote = '❌ Pierdes la Supercopa Cube.';
   }
   state.supercopa.available = false;
+
+  const levelUps = grantXP(xp, match.perf);
+  let wonEnvelope = null;
+  if(won) wonEnvelope = rollEnvelopeRarity();
+  checkSeasonGoals();
+  checkPlaystyleUnlocks();
+  checkTitleUnlocks();
+  maybeGenerateFanMail();
+  save();
+  showResultModal(outcome, xp, levelUps, false, wonEnvelope, cupNote);
+}
+
+/* ---- Champions Cube match resolution ---- */
+function endChampionsMatch(forfeited){
+  state.career.matches++;
+  const neverPlayed = match.playerBenched && !match.subDecided;
+  let xp = neverPlayed ? 4 : 24 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  if(!neverPlayed && hasPS('rematador')) xp += match.perf.goals*8;
+  let outcome='Empate';
+  if(match.scoreA>match.scoreB){ outcome='Victoria'; }
+  else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
+  updateForm(outcome);
+
+  const won = match.scoreA>match.scoreB || (match.scoreA===match.scoreB && Math.random()<0.5);
+  const stage = state.champions.stage;
+  state.champions.facedNames.push(match.rival.name);
+
+  let cupNote='';
+  if(won){
+    xp += 35;
+    if(stage==='final'){
+      state.champions.champion = true;
+      state.career.championsTrophies++;
+      state.trophyHistory.push({season:state.season, type:'champions', club:CLUBS[state.clubIdx].name});
+      addMail('🌟 ¡CAMPEÓN DE LA CHAMPIONS CUBE!', `Superaste a ${match.rival.name} en la final y te coronas campeón de la Champions Cube. Un nivel más de leyenda.`, 'Trofeo');
+      cupNote = '🌟 ¡Eres el campeón de la Champions Cube!';
+    } else {
+      const nextStage = CHAMPIONS_STAGES[championsStageIndex(stage)+1];
+      state.champions.stage = nextStage; state.champions.opponent = null;
+      addMail(`Pasas a ${CHAMPIONS_STAGE_LABEL[nextStage]} de la Champions Cube`, `Superaste a ${match.rival.name} (${match.scoreA}-${match.scoreB}${match.scoreA===match.scoreB?', penaltis':''}) y avanzas en la Champions Cube.`, 'Champions');
+      cupNote = `➡️ Avanzas a ${CHAMPIONS_STAGE_LABEL[nextStage]}.`;
+    }
+  } else {
+    state.champions.eliminated = true;
+    addMail('Eliminado de la Champions Cube', `${match.rival.name} te elimina en ${CHAMPIONS_STAGE_LABEL[stage]} (${match.scoreA}-${match.scoreB}). Te lo dejas todo la próxima vez.`, 'Champions');
+    cupNote = `❌ Eliminado en ${CHAMPIONS_STAGE_LABEL[stage]}.`;
+  }
+
+  const levelUps = grantXP(xp, match.perf);
+  let wonEnvelope = null;
+  if(won) wonEnvelope = rollEnvelopeRarity();
+  checkSeasonGoals();
+  checkPlaystyleUnlocks();
+  checkTitleUnlocks();
+  maybeGenerateFanMail();
+  save();
+  showResultModal(outcome, xp, levelUps, false, wonEnvelope, cupNote);
+}
+
+/* ---- Mundial de Cubos match resolution ---- */
+function endWorldCupMatch(forfeited){
+  state.career.matches++;
+  const neverPlayed = match.playerBenched && !match.subDecided;
+  let xp = neverPlayed ? 4 : 28 + match.perf.goals*30 + match.perf.assists*18 + match.perf.recoveries*8;
+  if(!neverPlayed && hasPS('rematador')) xp += match.perf.goals*8;
+  let outcome='Empate';
+  if(match.scoreA>match.scoreB){ outcome='Victoria'; }
+  else if(match.scoreA<match.scoreB){ outcome='Derrota'; }
+  updateForm(outcome);
+
+  const won = match.scoreA>match.scoreB || (match.scoreA===match.scoreB && Math.random()<0.5);
+  const stage = state.worldcup.stage;
+  state.worldcup.facedNames.push(match.rival.name);
+
+  let cupNote='';
+  if(won){
+    xp += 45;
+    if(stage==='final'){
+      state.worldcup.champion = true;
+      state.career.worldCups++;
+      state.trophyHistory.push({season:state.season, type:'mundial', club:CLUBS[state.clubIdx].name});
+      addMail('🌍 ¡CAMPEÓN DEL MUNDIAL DE CUBOS!', `Ganaste la final ante ${match.rival.name}. Tu nombre queda escrito en la historia del Mundial de Cubos.`, 'Trofeo');
+      cupNote = '🌍 ¡Eres campeón del Mundial de Cubos!';
+    } else {
+      const nextStage = WORLDCUP_STAGES[worldCupStageIndex(stage)+1];
+      state.worldcup.stage = nextStage; state.worldcup.opponent = null;
+      addMail(`Pasas a ${WORLDCUP_STAGE_LABEL[nextStage]} del Mundial`, `Superaste a ${match.rival.name} (${match.scoreA}-${match.scoreB}${match.scoreA===match.scoreB?', penaltis':''}) y avanzas en el Mundial de Cubos.`, 'Mundial');
+      cupNote = `➡️ Avanzas a ${WORLDCUP_STAGE_LABEL[nextStage]}.`;
+    }
+  } else {
+    state.worldcup.eliminated = true;
+    addMail('Eliminado del Mundial de Cubos', `${match.rival.name} os elimina en ${WORLDCUP_STAGE_LABEL[stage]} (${match.scoreA}-${match.scoreB}). Habrá otra convocatoria.`, 'Mundial');
+    cupNote = `❌ Eliminado en ${WORLDCUP_STAGE_LABEL[stage]}.`;
+  }
 
   const levelUps = grantXP(xp, match.perf);
   let wonEnvelope = null;
@@ -2321,6 +2576,14 @@ function finishSeason(){
   state.cup = makeCup(state.season);
   state.seasonGoals = makeSeasonGoals();
   state.seasonStats = { goals:0, assists:0, recoveries:0 };
+
+  const qualifiesChampions = wonLeague || youPos<=3;
+  state.champions = makeChampions(state.season, qualifiesChampions);
+  if(qualifiesChampions) addMail('🌟 Clasificado a la Champions Cube', `Tu Temporada ${state.season-1} te mete en la Champions Cube — pruébate contra los mejores equipos de la región.`, 'Champions');
+
+  const worldCupNow = state.season % 4 === 0;
+  state.worldcup = makeWorldCup(state.season, worldCupNow);
+  if(worldCupNow) addMail('🌍 ¡Convocatoria al Mundial de Cubos!', 'El seleccionador te ha llamado para representar a tu selección en el Mundial de Cubos de esta temporada.', 'Mundial');
 }
 function setupSupercopa(wonLeague){
   const wonCup = state.cup.champion;
