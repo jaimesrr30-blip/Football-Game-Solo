@@ -335,7 +335,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v10 — Supercopa Cube + Títulos + música de menú + explosiones de gol propias + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + fichajes + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
+    <div class="footer-note">Cube League: Career · v11 — negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + explosiones de gol propias + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + momentos épicos + Copa Cube + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón. El multijugador real no es viable en un Artefacto.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -1228,10 +1228,12 @@ function renderBuzon(){
     let extra='';
     if(m.type==='offer'){
       if(m.resolved){
-        extra = `<div style="margin-top:8px;font-size:12px;font-weight:800;color:${m.accepted?'var(--accent)':'var(--muted)'};">${m.accepted?'✅ Fichaje aceptado':'❌ Oferta rechazada'}</div>`;
+        const label = m.withdrawn ? '🚪 El club retiró la oferta' : (m.accepted?'✅ Fichaje aceptado':'❌ Oferta rechazada');
+        extra = `<div style="margin-top:8px;font-size:12px;font-weight:800;color:${m.accepted?'var(--accent)':'var(--muted)'};">${label}</div>`;
       } else {
-        extra = `<div style="display:flex;gap:8px;margin-top:10px;">
+        extra = `<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
           <button class="btn" data-accept="${m.id}" style="flex:1;padding:9px;">Aceptar</button>
+          ${m.negotiated ? '' : `<button class="btn secondary" data-negotiate="${m.id}" style="flex:1;padding:9px;">Negociar</button>`}
           <button class="btn secondary" data-reject="${m.id}" style="flex:1;padding:9px;">Rechazar</button>
         </div>`;
       }
@@ -1242,6 +1244,26 @@ function renderBuzon(){
   });
   host.querySelectorAll('[data-accept]').forEach(b=> b.onclick=(e)=>{ e.stopPropagation(); resolveOffer(b.dataset.accept, true); });
   host.querySelectorAll('[data-reject]').forEach(b=> b.onclick=(e)=>{ e.stopPropagation(); resolveOffer(b.dataset.reject, false); });
+  host.querySelectorAll('[data-negotiate]').forEach(b=> b.onclick=(e)=>{ e.stopPropagation(); negotiateOffer(b.dataset.negotiate); });
+}
+function negotiateOffer(mailId){
+  const m = state.mail.find(x=>String(x.id)===String(mailId));
+  if(!m || m.resolved || m.negotiated) return;
+  m.negotiated = true;
+  const roll = Math.random();
+  const club = CLUBS[m.offer.clubIdx];
+  if(roll < 0.45){
+    const bump = 1.15 + Math.random()*0.25;
+    m.offer.salary = Math.round(m.offer.salary*bump/100)*100;
+    m.body = `${club.name} quiere ficharte. Salario: $${m.offer.salary.toLocaleString('es-ES')}/semana · Duración: ${m.offer.duration} temporada(s) · Rol: Titular · Objetivo: ${m.offer.objective}.`;
+    toast('📈 El club mejora la oferta tras negociar');
+  } else if(roll < 0.8){
+    toast('🤝 El club se mantiene firme en su oferta');
+  } else {
+    m.resolved = true; m.read = true; m.accepted = false; m.withdrawn = true;
+    toast('❌ El club retira la oferta al ver que negocias');
+  }
+  save(); renderBuzon();
 }
 function resolveOffer(mailId, accept){
   const m = state.mail.find(x=>String(x.id)===String(mailId));
@@ -1280,7 +1302,7 @@ function openModal(html){
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('overlay').classList.add('show');
 }
-function closeModal(){ document.getElementById('overlay').classList.remove('show'); }
+function closeModal(){ document.getElementById('overlay').classList.remove('show'); replayStop=true; }
 document.addEventListener('click', (e)=>{ if(e.target.id==='overlay') closeModal(); });
 
 /* ============ SETTINGS ============ */
@@ -1595,6 +1617,19 @@ function stepMatch(dt){
   checkGoal();
   if(match.flashTimer>0) match.flashTimer-=dt;
   decayActionTimers(dt);
+  captureReplayFrame();
+}
+function captureReplayFrame(){
+  if(!match._replayBuffer) match._replayBuffer=[];
+  match._replayBuffer.push({
+    player:{x:match.player.x,y:match.player.y},
+    mates:match.mates.map(m=>({x:m.x,y:m.y})),
+    opps:match.opps.map(o=>({x:o.x,y:o.y})),
+    gkMe:{x:match.gkMe.x,y:match.gkMe.y},
+    gkOpp:{x:match.gkOpp.x,y:match.gkOpp.y},
+    ball:{x:match.ball.x,y:match.ball.y},
+  });
+  if(match._replayBuffer.length>150) match._replayBuffer.shift();
 }
 function decayActionTimers(dt){
   allEntities().forEach(e=>{
@@ -1858,7 +1893,7 @@ function onGoal(team){
   const banner=document.getElementById('goalBanner');
   if(team==='me'){
     match.scoreA++;
-    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); }
+    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); match._lastGoalReplay = match._replayBuffer ? match._replayBuffer.slice() : []; }
     else if(match.lastToucher && ['mate1','mate2'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; state.seasonStats.assists++; }
     banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
   } else {
@@ -2336,6 +2371,54 @@ function computeMVP(){
   }
   return null;
 }
+/* ---- best-play replay ---- */
+let replayStop=false;
+function openReplayModal(onClose){
+  const buffer = match._lastGoalReplay;
+  if(!buffer || !buffer.length) return;
+  replayStop = true; // stop any previous playback loop before starting a new one
+  openModal(`
+    <h3>🎬 Mejor jugada del partido</h3>
+    <div class="sub" style="margin-top:2px;">Repetición a cámara lenta de tu gol.</div>
+    <div style="margin-top:12px; border-radius:12px; overflow:hidden; border:1px solid var(--border);">
+      <canvas id="replayCanvas" width="360" height="208" style="display:block;width:100%;height:auto;background:#0e2f1f;"></canvas>
+    </div>
+    <div style="margin-top:14px;"><button class="btn big" id="replayCloseBtn" style="width:100%;">Volver</button></div>
+  `);
+  document.getElementById('replayCloseBtn').onclick = ()=>{ replayStop=true; onClose ? onClose() : closeModal(); };
+  playReplay(buffer);
+}
+function drawReplayDot(ctx, list, sx, sy, color){
+  ctx.fillStyle=color;
+  list.forEach(p=>{ if(!p) return; ctx.beginPath(); ctx.arc(p.x*sx, p.y*sy, 6, 0, Math.PI*2); ctx.fill(); });
+}
+function playReplay(buffer){
+  replayStop = false;
+  const cv=document.getElementById('replayCanvas'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  const sx=cv.width/FIELD_W, sy=cv.height/FIELD_H;
+  const rivalColor = match.rival.color;
+  const myColor = CLUBS[state.clubIdx].color;
+  let i=0;
+  function frame(){
+    if(replayStop) return;
+    if(!document.body.contains(cv)) return;
+    const snap = buffer[i];
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.fillStyle='#0e2f1f'; ctx.fillRect(0,0,cv.width,cv.height);
+    ctx.strokeStyle='rgba(255,255,255,0.3)'; ctx.strokeRect(3,3,cv.width-6,cv.height-6);
+    drawReplayDot(ctx, snap.mates, sx, sy, myColor+'aa');
+    drawReplayDot(ctx, snap.opps, sx, sy, rivalColor);
+    drawReplayDot(ctx, [snap.gkMe, snap.gkOpp], sx, sy, '#ffffff88');
+    ctx.beginPath(); ctx.fillStyle=colorHex(state.equipped.color); ctx.arc(snap.player.x*sx, snap.player.y*sy, 7, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+    ctx.beginPath(); ctx.fillStyle='#f5f7ff'; ctx.arc(snap.ball.x*sx, snap.ball.y*sy, 4, 0, Math.PI*2); ctx.fill();
+    i++;
+    if(i>=buffer.length) i=0;
+    setTimeout(()=>requestAnimationFrame(frame), 60);
+  }
+  frame();
+}
 function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope, cupNote){
   const banner = outcome==='Victoria'?'🏆':(outcome==='Empate'?'🤝':'💔');
   let html = `<h3>${banner} ${outcome}${match.isCup?' · Copa Cube':''}</h3>
@@ -2357,18 +2440,24 @@ function showResultModal(outcome, xp, levelUps, seasonEnded, wonEnvelope, cupNot
   if(cupNote) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">${cupNote}</div>`;
   if(wonEnvelope) html += `<div style="margin-top:10px;padding:10px 12px;border-radius:12px;background:rgba(168,85,247,0.14);border:1px solid rgba(168,85,247,0.35);font-size:13px;">🎁 Has ganado un Sobre Cube (${rarityLabel(wonEnvelope)}) — se abrirá al continuar.</div>`;
   if(seasonEnded) html += `<div style="margin-top:14px;padding:10px 12px;border-radius:12px;background:rgba(245,185,66,0.12);border:1px solid rgba(245,185,66,0.3);font-size:13px;">📅 Temporada finalizada — revisa tu buzón. Empieza la Temporada ${state.season}.</div>`;
-  html += `<div style="margin-top:18px;"><button class="btn big" id="resultContinueBtn" style="width:100%;">Continuar</button></div>`;
-  openModal(html);
-  document.getElementById('resultContinueBtn').onclick = ()=>{
-    closeModal();
-    document.getElementById('match-wrap').classList.remove('active');
-    document.getElementById('hq-wrap').classList.remove('hidden');
-    renderAll();
-    if(musicPlaying && audioCtx) startMusicLoop(audioCtx);
-    const afterEnvelope = ()=>{ if(levelUps && levelUps.length) playLevelUpSequence(levelUps, 0); };
-    if(wonEnvelope) openEnvelopeSequence(wonEnvelope, afterEnvelope);
-    else afterEnvelope();
-  };
+  const hasReplay = match._lastGoalReplay && match._lastGoalReplay.length>10;
+  if(hasReplay) html += `<div style="margin-top:14px;"><button class="btn secondary" id="replayOpenBtn" style="width:100%;">🎬 Ver repetición: mejor jugada</button></div>`;
+  html += `<div style="margin-top:12px;"><button class="btn big" id="resultContinueBtn" style="width:100%;">Continuar</button></div>`;
+  function renderResult(){
+    openModal(html);
+    document.getElementById('resultContinueBtn').onclick = ()=>{
+      closeModal();
+      document.getElementById('match-wrap').classList.remove('active');
+      document.getElementById('hq-wrap').classList.remove('hidden');
+      renderAll();
+      if(musicPlaying && audioCtx) startMusicLoop(audioCtx);
+      const afterEnvelope = ()=>{ if(levelUps && levelUps.length) playLevelUpSequence(levelUps, 0); };
+      if(wonEnvelope) openEnvelopeSequence(wonEnvelope, afterEnvelope);
+      else afterEnvelope();
+    };
+    if(hasReplay) document.getElementById('replayOpenBtn').onclick = ()=> openReplayModal(renderResult);
+  }
+  renderResult();
 }
 
 function playLevelUpSequence(ups, idx){
