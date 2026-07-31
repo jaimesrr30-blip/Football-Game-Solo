@@ -351,7 +351,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v15 — rasgos ocultos (cada jugador de tu plantilla nace con un don natural secreto, tú incluido — se descubren jugando) + ataque IA con puntería real a portería + porteros con reacción/error realista + animación de recepción de balón + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible (📋 Ver eliminatoria) + elección de posición (incl. portero jugable) al fichar + calendario con fecha real + prórroga y penaltis en eliminatorias + resumen grande de fin de temporada + Marcos + Emotes + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + explosiones de gol + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón.</div>
+    <div class="footer-note">Cube League: Career · v16 — explosiones de gol únicas por tipo (agujero negro de verdad, tormenta con rayos, tsunami, galaxia, dragón de luz, divina, prohibida...) + celebraciones que le pasan algo a tu cubo 5 seg al marcar (según la equipada) + emotes ahora duran 5 seg sobre tu cubo + rasgos ocultos + ataque IA con puntería real a portería + porteros con reacción/error realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible (📋 Ver eliminatoria) + elección de posición (incl. portero jugable) al fichar + calendario con fecha real + prórroga y penaltis en eliminatorias + resumen grande de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -2499,7 +2499,7 @@ function onGoal(team){
   const banner=document.getElementById('goalBanner');
   if(team==='me'){
     match.scoreA++;
-    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); spawnGoalEmote(); match._lastGoalReplay = match._replayBuffer ? match._replayBuffer.slice() : []; }
+    if(match.lastToucher && match.lastToucher.id==='you' && match.lastToucher.userControlled){ match.perf.goals++; state.career.goals++; state.seasonStats.goals++; spawnGoalExplosion(); spawnGoalEmote(); spawnCelebration(); match._lastGoalReplay = match._replayBuffer ? match._replayBuffer.slice() : []; }
     else if(match.lastToucher && ['mate1','mate2','gkMe'].includes(match.lastToucher.id) && match.prevToucher && match.prevToucher.id==='you' && match.prevToucher.userControlled){ match.perf.assists++; state.career.assists++; state.seasonStats.assists++; }
     banner.style.color='var(--gold)'; banner.textContent='¡GOOOL!';
   } else {
@@ -2518,16 +2518,44 @@ function onGoal(team){
 function spawnGoalExplosion(){
   const item = GOAL_EXPLOSION_ITEMS.find(i=>i.id===state.equipped.explosion) || GOAL_EXPLOSION_ITEMS[0];
   const count = {common:14,rare:20,epic:28,legendary:38,mythic:48,secret:55,divine:65,forbidden:80}[item.rarity] || 14;
-  const particles = Array.from({length:count}, ()=>({
-    x: match.ball.x, y: match.ball.y,
-    vx:(Math.random()-0.5)*6.5, vy:(Math.random()-0.5)*6.5,
-    life:1, size:2+Math.random()*3,
+  const x = match.ball.x, y = match.ball.y;
+  const mkParticles = (n, speed, sizeMin, sizeMax)=> Array.from({length:n}, ()=>({
+    x, y, vx:(Math.random()-0.5)*speed, vy:(Math.random()-0.5)*speed,
+    life:1, size:sizeMin+Math.random()*(sizeMax-sizeMin),
   }));
-  match._goalFx = { color:item.color, particles, timer:1.3 };
+  const durations = {classic:1.0, storm:1.2, tsunami:1.4, galaxy_fx:1.6, blackhole:2.6, dragon:1.7, divine_fx:1.5, forbidden_fx:2.0};
+  const base = { type:item.id, color:item.color, x, y, timer:durations[item.id]||1.3, total:durations[item.id]||1.3, age:0 };
+  if(item.id==='storm'){
+    base.particles = mkParticles(count, 5, 1.5, 3);
+    base.bolts = Array.from({length:5}, (_,i)=>({ ang: -1.4+Math.random()*0.4+i*0.35, seed:Math.random() }));
+  } else if(item.id==='tsunami'){
+    base.particles = mkParticles(count, 4, 1.5, 3.5);
+  } else if(item.id==='galaxy_fx'){
+    base.particles = Array.from({length:count}, (_,i)=>({ x, y, ang:(i/count)*Math.PI*2, r:4, spin:0.12+Math.random()*0.08, size:1.5+Math.random()*2.5, life:1 }));
+  } else if(item.id==='blackhole'){
+    base.particles = Array.from({length:count}, (_,i)=>({ x:x+(Math.random()-0.5)*140, y:y+(Math.random()-0.5)*100, ang:Math.random()*Math.PI*2, r:60+Math.random()*70, size:1.5+Math.random()*2.5, sucked:false }));
+    base.stars = [];
+  } else if(item.id==='dragon'){
+    base.particles = Array.from({length:count}, (_,i)=>({ t:-(i/count)*0.9, size:2+Math.random()*2.5 }));
+  } else if(item.id==='divine_fx'){
+    base.particles = mkParticles(Math.round(count*0.4), 2, 1.5, 3);
+    base.rays = 16;
+  } else if(item.id==='forbidden_fx'){
+    base.particles = mkParticles(count, 6.5, 1.5, 3.5);
+    base.bolts = Array.from({length:6}, (_,i)=>({ ang: -1.4+Math.random()*0.5+i*0.3, seed:Math.random() }));
+    base.embers = mkParticles(Math.round(count*0.5), 2, 1, 2.5);
+  } else {
+    base.particles = mkParticles(count, 6.5, 2, 5);
+  }
+  match._goalFx = base;
+}
+function spawnCelebration(){
+  const id = state.equipped.celeb;
+  match._celebFx = { type:id, timer:5.0, total:5.0, embers: id==='forbidden' ? Array.from({length:14},(_,i)=>({ang:(i/14)*Math.PI*2, r:20+Math.random()*10, spin:0.06+Math.random()*0.05})) : null };
 }
 function spawnGoalEmote(){
   const item = EMOTE_ITEMS.find(i=>i.id===state.equipped.emote) || EMOTE_ITEMS[0];
-  match._emoteFx = { emoji:item.emoji, x:match.player.x, y:match.player.y-30, timer:1.4 };
+  match._emoteFx = { emoji:item.emoji, timer:5.0, total:5.0 };
 }
 function resetKickoff(startingTeam){
   const ball=match.ball;
@@ -2606,28 +2634,19 @@ function drawMatch(){
     fx.timer -= 0.09;
   }
 
-  if(match._goalFx && match._goalFx.timer>0){
-    const fx=match._goalFx;
-    ctx.save();
-    fx.particles.forEach(p=>{
-      p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.02;
-      ctx.globalAlpha=Math.max(0,p.life);
-      ctx.fillStyle=fx.color;
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
-    });
-    ctx.restore();
-    fx.timer -= 0.03;
-  }
+  if(match._goalFx && match._goalFx.timer>0) drawGoalFx(ctx);
 
   if(match._emoteFx && match._emoteFx.timer>0){
-    const fx=match._emoteFx;
+    const fx=match._emoteFx; const p=match.player;
+    const age = fx.total-fx.timer;
+    const bob = Math.sin(age*3.2)*4;
+    const popIn = Math.min(1, age/0.3);
     ctx.save();
-    ctx.globalAlpha=Math.max(0,Math.min(1,fx.timer));
-    ctx.font='26px sans-serif'; ctx.textAlign='center';
-    fx.y -= 0.4;
-    ctx.fillText(fx.emoji, fx.x, fx.y);
+    ctx.globalAlpha = Math.min(1, fx.timer*2) * popIn;
+    ctx.font = (22+popIn*6)+'px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(fx.emoji, p.x, p.y-30+bob);
     ctx.restore();
-    fx.timer -= 0.02;
+    fx.timer -= 1/60;
   }
 
   drawWeather(ctx);
@@ -2688,15 +2707,226 @@ function drawWeather(ctx){
   }
 }
 function drawCube(ctx, e, fill, edge, label, isYou){
+  const celeb = (isYou && match._celebFx && match._celebFx.timer>0) ? match._celebFx : null;
+  if(celeb) drawCelebBackground(ctx, e, celeb);
   ctx.save();
   ctx.translate(e.x,e.y);
+  let bobY=0, rot=0, scale=1;
+  if(celeb){
+    const age = celeb.total-celeb.timer;
+    if(celeb.type==='jump'){ bobY = -Math.abs(Math.sin(age*5))*16; }
+    else if(celeb.type==='clap'){ scale = 1+Math.sin(age*8)*0.08; }
+    else if(celeb.type==='backflip'){ rot = age*7; bobY = -Math.abs(Math.sin(age*3.5))*22; }
+    else if(celeb.type==='eclipse'){ scale = 1+Math.sin(age*2)*0.04; }
+    else if(celeb.type==='forbidden'){ bobY = Math.sin(age*10)*2; rot = Math.sin(age*6)*0.08; }
+  }
+  ctx.translate(0, bobY);
+  ctx.rotate(rot);
+  ctx.scale(scale, scale);
   ctx.fillStyle=fill;
-  if(isYou){ ctx.shadowColor=fill; ctx.shadowBlur=16; }
+  if(isYou){ ctx.shadowColor=fill; ctx.shadowBlur = celeb ? 26 : 16; }
   roundRect(ctx,-e.r,-e.r,e.r*2,e.r*2,6); ctx.fill();
   ctx.shadowBlur=0;
   ctx.strokeStyle=edge; ctx.lineWidth=2; roundRect(ctx,-e.r,-e.r,e.r*2,e.r*2,6); ctx.stroke();
   if(label){ ctx.fillStyle=edge; ctx.font='bold 9px sans-serif'; ctx.textAlign='center'; ctx.fillText(label,0,3); }
   ctx.restore();
+  if(celeb) drawCelebForeground(ctx, e, celeb);
+  if(isYou && match._celebFx) match._celebFx.timer -= 1/60;
+}
+function drawCelebBackground(ctx, e, celeb){
+  if(celeb.type!=='eclipse') return;
+  const age = celeb.total-celeb.timer;
+  ctx.save();
+  ctx.translate(e.x, e.y);
+  const grad = ctx.createRadialGradient(0,0,4, 0,0,34);
+  grad.addColorStop(0,'rgba(10,8,20,0.9)'); grad.addColorStop(0.7,'rgba(30,10,50,0.55)'); grad.addColorStop(1,'rgba(30,10,50,0)');
+  ctx.fillStyle=grad;
+  ctx.beginPath(); ctx.arc(0,0,34,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='rgba(230,190,255,0.85)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(0,0,24, age*1.4, age*1.4+Math.PI*1.5); ctx.stroke();
+  ctx.restore();
+}
+function drawCelebForeground(ctx, e, celeb){
+  const age = celeb.total-celeb.timer;
+  if(celeb.type==='clap'){
+    const beat = age*4;
+    const frac = beat - Math.floor(beat);
+    ctx.save();
+    ctx.strokeStyle='#f5b942'; ctx.globalAlpha = 1-frac; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(e.x, e.y, 18+frac*20, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  } else if(celeb.type==='backflip'){
+    ctx.save();
+    ctx.strokeStyle='rgba(255,255,255,0.5)'; ctx.lineWidth=2; ctx.globalAlpha=0.5;
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r+6, 0, Math.PI*2); ctx.stroke();
+    ctx.restore();
+  } else if(celeb.type==='forbidden' && celeb.embers){
+    ctx.save();
+    celeb.embers.forEach(em=>{
+      em.ang += em.spin;
+      const px = e.x+Math.cos(em.ang)*em.r, py = e.y+Math.sin(em.ang)*em.r*0.6-6;
+      ctx.fillStyle = Math.random()<0.5 ? '#ff2fb0' : '#ef4463';
+      ctx.globalAlpha = 0.7;
+      ctx.beginPath(); ctx.arc(px,py,2+Math.random()*1.5,0,Math.PI*2); ctx.fill();
+    });
+    ctx.restore();
+    if(Math.random()<0.04){ ctx.save(); ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fillRect(0,0,FIELD_W,FIELD_H); ctx.restore(); }
+  }
+}
+function drawGoalFx(ctx){
+  const fx = match._goalFx;
+  fx.age += 1/60;
+  const t = fx.age, dur = fx.total;
+  ctx.save();
+  switch(fx.type){
+    case 'storm': {
+      const boltAlpha = Math.max(0, 1 - t/0.35);
+      if(boltAlpha>0){
+        ctx.strokeStyle = '#bfe9ff'; ctx.lineWidth=2; ctx.globalAlpha = boltAlpha;
+        fx.bolts.forEach(b=>{
+          ctx.beginPath();
+          let bx=fx.x, by=fx.y-140;
+          ctx.moveTo(bx,by);
+          for(let i=0;i<5;i++){ bx += Math.cos(b.ang)*22 + (Math.random()-0.5)*14; by += 28; ctx.lineTo(bx,by); }
+          ctx.stroke();
+        });
+      }
+      fx.particles.forEach(p=>{
+        p.x+=p.vx*0.3; p.y+=p.vy*0.3+2.2; p.life-=0.012;
+        ctx.globalAlpha=Math.max(0,p.life)*0.8; ctx.strokeStyle='#8ec9ff'; ctx.lineWidth=1.4;
+        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(p.x,p.y+8); ctx.stroke();
+      });
+      break;
+    }
+    case 'tsunami': {
+      const progress = Math.min(1, t/0.9);
+      ctx.strokeStyle = fx.color; ctx.lineWidth=5; ctx.globalAlpha=Math.max(0,0.75*(1-t/dur));
+      ctx.beginPath();
+      for(let x=-60; x<=60; x+=6){
+        const wx = fx.x + x*progress*1.6;
+        const wy = fx.y + Math.sin((x*0.15)+t*6)*10 - progress*4;
+        if(x===-60) ctx.moveTo(wx,wy); else ctx.lineTo(wx,wy);
+      }
+      ctx.stroke();
+      fx.particles.forEach(p=>{
+        p.x+=p.vx*0.5; p.y+=p.vy*0.5; p.life-=0.018;
+        ctx.globalAlpha=Math.max(0,p.life)*0.7; ctx.fillStyle='#c9f4ff';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+    case 'galaxy_fx': {
+      const glow = ctx.createRadialGradient(fx.x,fx.y,2, fx.x,fx.y,60);
+      glow.addColorStop(0,'rgba(255,255,255,0.5)'); glow.addColorStop(1,'rgba(168,85,247,0)');
+      ctx.globalAlpha = Math.max(0,1-t/dur);
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(fx.x,fx.y,60,0,Math.PI*2); ctx.fill();
+      fx.particles.forEach(p=>{
+        p.ang += p.spin; p.r += 1.1; p.life -= 0.012;
+        const px = fx.x+Math.cos(p.ang)*p.r, py=fx.y+Math.sin(p.ang)*p.r*0.6;
+        ctx.globalAlpha=Math.max(0,p.life);
+        ctx.fillStyle = Math.random()<0.7? '#c9a3ff':'#ffffff';
+        ctx.beginPath(); ctx.arc(px,py,p.size,0,Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+    case 'blackhole': {
+      const holeGrow = Math.min(1, t/(dur*0.23));
+      const holeShrink = t> dur*0.68 ? Math.max(0, 1-(t-dur*0.68)/(dur*0.32)) : 1;
+      const radius = 46*holeGrow*holeShrink;
+      if(radius>0.5){
+        const grad = ctx.createRadialGradient(fx.x,fx.y,0, fx.x,fx.y,radius);
+        grad.addColorStop(0,'rgba(0,0,0,1)'); grad.addColorStop(0.75,'rgba(10,5,20,0.95)'); grad.addColorStop(1,'rgba(140,80,255,0.5)');
+        ctx.globalAlpha=1; ctx.fillStyle=grad;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y,radius,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='rgba(190,140,255,0.9)'; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.arc(fx.x,fx.y,radius+2,0,Math.PI*2); ctx.stroke();
+      }
+      if(t < dur*0.7){
+        fx.particles.forEach(pt=>{
+          if(pt.r>4){ pt.r -= 3.2; pt.ang += 0.25; }
+          const px = fx.x+Math.cos(pt.ang)*pt.r, py = fx.y+Math.sin(pt.ang)*pt.r*0.7;
+          ctx.globalAlpha = Math.min(1, pt.r/60);
+          ctx.fillStyle='#e9d9ff';
+          ctx.beginPath(); ctx.arc(px,py,pt.size,0,Math.PI*2); ctx.fill();
+          if(pt.r<=4 && !pt.sucked){ pt.sucked=true; fx.stars.push({x:fx.x+(Math.random()-0.5)*90, y:fx.y+(Math.random()-0.5)*70, life:1, size:1+Math.random()*1.5}); }
+        });
+      }
+      fx.stars.forEach(s=>{
+        s.life -= 0.008;
+        ctx.globalAlpha=Math.max(0,s.life); ctx.fillStyle='#ffffff';
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.size*(0.6+Math.sin(s.life*20)*0.4+0.6),0,Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+    case 'dragon': {
+      fx.particles.forEach(p=>{
+        p.t += 1/60;
+        if(p.t<0 || p.t>1.1) return;
+        const tt = Math.min(1,p.t);
+        const px = fx.x - 90 + tt*180 + Math.sin(tt*Math.PI*3)*30;
+        const py = fx.y + Math.cos(tt*Math.PI*2.4)*36 - tt*20;
+        ctx.globalAlpha = Math.max(0, 1-Math.abs(p.t-0.5)*1.1);
+        ctx.fillStyle = p.t>0.9 ? '#fff4c2' : fx.color;
+        ctx.beginPath(); ctx.arc(px,py,p.size,0,Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+    case 'divine_fx': {
+      ctx.globalAlpha = Math.max(0,1-t/dur)*0.8;
+      ctx.strokeStyle = '#fff6d8'; ctx.lineWidth=3;
+      for(let i=0;i<fx.rays;i++){
+        const a = (i/fx.rays)*Math.PI*2 + t*0.6;
+        const len = 40+Math.sin(t*4+i)*10;
+        ctx.beginPath(); ctx.moveTo(fx.x,fx.y); ctx.lineTo(fx.x+Math.cos(a)*len, fx.y+Math.sin(a)*len); ctx.stroke();
+      }
+      const glow = ctx.createRadialGradient(fx.x,fx.y,0, fx.x,fx.y,50);
+      glow.addColorStop(0,'rgba(255,250,220,0.9)'); glow.addColorStop(1,'rgba(255,250,220,0)');
+      ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(fx.x,fx.y,50,0,Math.PI*2); ctx.fill();
+      fx.particles.forEach(p=>{
+        p.y -= 1.6; p.life-=0.012;
+        ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle='#ffe9a8';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      });
+      break;
+    }
+    case 'forbidden_fx': {
+      ctx.fillStyle='rgba(60,0,20,0.18)'; ctx.beginPath(); ctx.arc(fx.x,fx.y,90,0,Math.PI*2); ctx.fill();
+      const boltAlpha = Math.max(0, 1-t/0.5);
+      if(boltAlpha>0){
+        ctx.strokeStyle='#ff2fb0'; ctx.lineWidth=2.4; ctx.globalAlpha=boltAlpha;
+        fx.bolts.forEach(b=>{
+          ctx.beginPath(); let bx=fx.x, by=fx.y-150;
+          ctx.moveTo(bx,by);
+          for(let i=0;i<6;i++){ bx+=Math.cos(b.ang)*22+(Math.random()-0.5)*16; by+=30; ctx.lineTo(bx,by); }
+          ctx.stroke();
+        });
+      }
+      fx.particles.forEach(p=>{
+        p.x+=p.vx; p.y+=p.vy+0.06; p.life-=0.012;
+        ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle='#ff2fb0';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      });
+      fx.embers.forEach(p=>{
+        p.x+=p.vx*0.3; p.y+=p.vy*0.3-1; p.life-=0.01;
+        ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle='#ffb020';
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      });
+      if(Math.random()<0.05){ ctx.fillStyle='rgba(255,255,255,0.12)'; ctx.fillRect(0,0,FIELD_W,FIELD_H); }
+      break;
+    }
+    default: {
+      ctx.globalAlpha = Math.max(0,1-t/dur)*0.5;
+      ctx.strokeStyle=fx.color; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.arc(fx.x,fx.y, t*160, 0, Math.PI*2); ctx.stroke();
+      fx.particles.forEach(p=>{
+        p.x+=p.vx; p.y+=p.vy; p.vy+=0.05; p.life-=0.02;
+        ctx.globalAlpha=Math.max(0,p.life); ctx.fillStyle=fx.color;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,Math.PI*2); ctx.fill();
+      });
+    }
+  }
+  ctx.restore();
+  fx.timer -= 1/60;
 }
 function roundRect(ctx,x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
 
