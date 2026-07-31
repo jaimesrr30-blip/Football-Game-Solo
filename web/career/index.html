@@ -246,6 +246,7 @@ table.league tr.me td.tname{ color:var(--accent); }
 .squad-card .pos-tag{ font-size:10px; color:var(--muted); font-weight:800; }
 .squad-card .pname{ font-weight:700; font-size:12.5px; margin:4px 0; }
 .squad-card .povr{ font-weight:900; color:var(--gold); font-size:14px; }
+.squad-card .strait{ font-size:10px; margin-top:5px; opacity:.85; border-top:1px solid var(--border); padding-top:5px; }
 
 /* ---------- mobile controls ---------- */
 .mobile-controls{ position:absolute; inset:0; pointer-events:none; display:none; }
@@ -350,7 +351,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v14.1 — ataque IA con puntería real a portería + porteros con reacción/error realista (menos 0-0) + animación de recepción de balón + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible (📋 Ver eliminatoria) + elección de posición (incl. portero jugable) al fichar + calendario con fecha real + prórroga y penaltis en eliminatorias + resumen grande de fin de temporada + Marcos + Emotes + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + explosiones de gol + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón.</div>
+    <div class="footer-note">Cube League: Career · v15 — rasgos ocultos (cada jugador de tu plantilla nace con un don natural secreto, tú incluido — se descubren jugando) + ataque IA con puntería real a portería + porteros con reacción/error realista + animación de recepción de balón + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible (📋 Ver eliminatoria) + elección de posición (incl. portero jugable) al fichar + calendario con fecha real + prórroga y penaltis en eliminatorias + resumen grande de fin de temporada + Marcos + Emotes + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + explosiones de gol + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -502,6 +503,39 @@ function checkPlaystyleUnlocks(){
   });
 }
 function hasPS(id){ return state.equipped.playstyle===id; }
+
+/* ---- rasgos ocultos ---- */
+const HIDDEN_TRAITS = [
+  {id:'killer', icon:'🎯', label:'Instinto Asesino', desc:'Más puntería cuando el balón está cerca del área rival.', shared:true},
+  {id:'vision', icon:'🧠', label:'Visión de Juego', desc:'Pases más precisos y peligrosos.', shared:true},
+  {id:'rayo', icon:'⚡', label:'Explosividad', desc:'Arranca y cambia de ritmo más rápido.', shared:true},
+  {id:'incordio', icon:'🌀', label:'Incordio Constante', desc:'Presiona y recupera el balón con más facilidad.', shared:true},
+  {id:'motor', icon:'🏃', label:'Motor Incansable', desc:'El turbo se agota más despacio y se recarga más rápido.'},
+  {id:'muralla', icon:'🧱', label:'Muralla Natural', desc:'Mucho más fiable en las entradas defensivas.'},
+  {id:'sangre_fria', icon:'❄️', label:'Sangre Fría', desc:'Mejor puntería en la tanda de penaltis.'},
+  {id:'corazon', icon:'❤️‍🔥', label:'Corazón de Capitán', desc:'Rinde mejor cuando el equipo va perdiendo.'},
+  {id:'felino', icon:'🐆', label:'Reflejos Felinos', desc:'Mejores reflejos si juegas de portero.'},
+  {id:'imantado', icon:'🧲', label:'Control Imantado', desc:'Controla los balones difíciles con más facilidad.'},
+];
+function pickRandomTraitId(onlyShared){
+  const pool = onlyShared ? HIDDEN_TRAITS.filter(t=>t.shared) : HIDDEN_TRAITS;
+  return pool[Math.floor(Math.random()*pool.length)].id;
+}
+function traitInfo(id){ return HIDDEN_TRAITS.find(t=>t.id===id); }
+function hasHiddenTrait(entity, id){
+  if(!entity) return false;
+  if(entity===match.player) return !!(state.hiddenTrait && state.hiddenTrait.id===id);
+  return entity.hiddenTraitId===id;
+}
+function checkHiddenTraitReveal(){
+  if(state.hiddenTrait.discovered) return;
+  if(state.career.matches >= state.hiddenTrait.revealAt){
+    state.hiddenTrait.discovered = true;
+    const t = traitInfo(state.hiddenTrait.id);
+    addMail(`🔎 Descubres tu rasgo oculto: ${t.icon} ${t.label}`, `${t.desc} Llevabas toda la carrera jugando con este don natural sin saberlo — y de paso, se te revelan los rasgos ocultos de todos tus compañeros de plantilla.`, 'Rasgo oculto');
+    toast(`🔎 ¡Descubres tu rasgo oculto: ${t.label}!`);
+  }
+}
 
 /* ---- posición del jugador ---- */
 const POSITIONS = [
@@ -888,7 +922,11 @@ function freshState(){
     schedule: null, table: null,
     mail: [],
     settings: { controlMode: 'desktop' },
-    squad: { bench: generateBench() },
+    squad: { bench: generateBench(), mates: [
+      {name:'Compañero 1', trait: pickRandomTraitId(true)},
+      {name:'Compañero 2', trait: pickRandomTraitId(true)},
+    ] },
+    hiddenTrait: { id: pickRandomTraitId(false), discovered:false, revealAt: 3 },
     cup: null, // built in init() once `state` is assigned, since makeCup() needs state.playerName/equipped/stats
     supercopa: { available:false, opponent:null, wonWhat:null, applicable:false, resolved:false, won:false },
     lastSeasonSummary: null,
@@ -904,7 +942,7 @@ function freshState(){
 function generateBench(){
   const shuffled = [...BENCH_NAMES].sort(()=>Math.random()-0.5);
   const positions = ['DEF','MED','MED','DEL'];
-  return shuffled.slice(0,4).map((name,i)=>({id:'bench_'+i+'_'+name, name, pos:positions[i%positions.length], ovr:55+Math.floor(Math.random()*16)}));
+  return shuffled.slice(0,4).map((name,i)=>({id:'bench_'+i+'_'+name, name, pos:positions[i%positions.length], ovr:55+Math.floor(Math.random()*16), trait: pickRandomTraitId(true)}));
 }
 
 function xpToNext(level){ return Math.round(90 * Math.pow(1.13, level-1)); }
@@ -969,6 +1007,12 @@ async function init(){
   if(!state.gameDateISO) state.gameDateISO = new Date(2025,7,1).toISOString();
   if(!state.settings) state.settings = { controlMode:'desktop' };
   if(!state.squad || !state.squad.bench) state.squad = { bench: generateBench() };
+  if(!state.squad.mates) state.squad.mates = [
+    {name:'Compañero 1', trait: pickRandomTraitId(true)},
+    {name:'Compañero 2', trait: pickRandomTraitId(true)},
+  ];
+  state.squad.bench.forEach(b=>{ if(!b.trait) b.trait = pickRandomTraitId(true); });
+  if(!state.hiddenTrait) state.hiddenTrait = { id: pickRandomTraitId(false), discovered:false, revealAt: state.career.matches+3 };
   if(!state.cup || !state.cup.bracket || state.cup.season!==state.season) state.cup = makeCup(state.season);
   if(!state.seasonGoals) state.seasonGoals = makeSeasonGoals();
   if(!state.seasonStats) state.seasonStats = { goals:0, assists:0, recoveries:0 };
@@ -1322,6 +1366,20 @@ function renderJugador(){
       </div>
     </div>
     <div class="card">
+      <h2>🔎 Rasgo Oculto</h2>
+      ${state.hiddenTrait.discovered ? (()=>{ const t=traitInfo(state.hiddenTrait.id); return `
+        <div class="sub" style="margin-bottom:8px;">Un don natural que llevas desde el principio de tu carrera.</div>
+        <div style="display:flex;align-items:center;gap:12px;background:var(--panel-solid);border:1px solid var(--border);border-radius:12px;padding:12px;">
+          <div style="font-size:32px;">${t.icon}</div>
+          <div><div style="font-weight:800;font-size:14px;">${t.label}</div><div class="sub" style="margin-top:2px;">${t.desc}</div></div>
+        </div>`; })() : `
+        <div class="sub">Todo jugador nace con un don natural. Juega ${Math.max(0,state.hiddenTrait.revealAt-state.career.matches)} partido(s) más para descubrirlo (y de paso, el de tus compañeros).</div>
+        <div style="display:flex;align-items:center;gap:12px;background:var(--panel-solid);border:1px solid var(--border);border-radius:12px;padding:12px;">
+          <div style="font-size:32px;">🔒</div>
+          <div><div style="font-weight:800;font-size:14px;">??? — todavía sin descubrir</div></div>
+        </div>`}
+    </div>
+    <div class="card">
       <h2>Personalización</h2>
       <div class="sub">Los tonos con brillo se desbloquean subiendo de nivel.</div>
       <div class="custom-section-title">Color principal</div>
@@ -1459,6 +1517,11 @@ function buildItemGrid(hostId, list, field){
 function rarityLabel(r){ return {common:'Común',rare:'Raro',epic:'Épico',legendary:'Legendario',mythic:'Mítico',secret:'Secreto',divine:'Divino',forbidden:'Prohibido'}[r]||r; }
 
 /* ---- PLANTILLA ---- */
+function traitTagHtml(traitId){
+  if(!state.hiddenTrait.discovered) return `<div class="strait">🔒 Rasgo oculto</div>`;
+  const t = traitInfo(traitId);
+  return `<div class="strait">${t.icon} ${t.label}</div>`;
+}
 function renderPlantilla(){
   const el=document.getElementById('tab-plantilla');
   el.innerHTML = `
@@ -1467,14 +1530,14 @@ function renderPlantilla(){
       <div class="sub">${CLUBS[state.clubIdx].name} · Formación reducida 3+portero. Los cambios en partido los decide el entrenador según tu rendimiento y tu forma — no los eliges tú.</div>
       <div class="custom-section-title">Titulares</div>
       <div class="squad-grid">
-        <div class="squad-card you"><div class="pos-tag">${positionInfo().abbr}</div><div class="pname">${state.playerName} (Tú)</div><div class="povr">${overall(state.stats)}</div></div>
-        <div class="squad-card"><div class="pos-tag">MED</div><div class="pname">Compañero 1</div><div class="povr">64</div></div>
-        <div class="squad-card"><div class="pos-tag">MED</div><div class="pname">Compañero 2</div><div class="povr">63</div></div>
+        <div class="squad-card you"><div class="pos-tag">${positionInfo().abbr}</div><div class="pname">${state.playerName} (Tú)</div><div class="povr">${overall(state.stats)}</div>${traitTagHtml(state.hiddenTrait.id)}</div>
+        <div class="squad-card"><div class="pos-tag">MED</div><div class="pname">${state.squad.mates[0].name}</div><div class="povr">64</div>${traitTagHtml(state.squad.mates[0].trait)}</div>
+        <div class="squad-card"><div class="pos-tag">MED</div><div class="pname">${state.squad.mates[1].name}</div><div class="povr">63</div>${traitTagHtml(state.squad.mates[1].trait)}</div>
         <div class="squad-card"><div class="pos-tag">POR</div><div class="pname">Portero</div><div class="povr">65</div></div>
       </div>
       <div class="custom-section-title">Suplentes</div>
       <div class="squad-grid">
-        ${state.squad.bench.map(b=>`<div class="squad-card"><div class="pos-tag">${b.pos}</div><div class="pname">${b.name}</div><div class="povr">${b.ovr}</div></div>`).join('')}
+        ${state.squad.bench.map(b=>`<div class="squad-card"><div class="pos-tag">${b.pos}</div><div class="pname">${b.name}</div><div class="povr">${b.ovr}</div>${traitTagHtml(b.trait)}</div>`).join('')}
       </div>
     </div>
   `;
@@ -1913,8 +1976,8 @@ function resolvePlayerPenalty(chosen, onDone){
   const guessChance = Math.max(0.2, Math.min(0.55, 0.3 + (rivalPower-65)/150));
   const keeperDir = Math.random()<guessChance ? chosen : dirs[Math.floor(Math.random()*dirs.length)];
   const sameZone = keeperDir===chosen;
-  const tiro = state.stats.tiro;
-  const scoreChance = sameZone ? Math.max(0.15, Math.min(0.5, (tiro-50)/200)) : 0.92;
+  const tiro = state.stats.tiro + (hasHiddenTrait(match.player,'sangre_fria') ? 14 : 0);
+  const scoreChance = sameZone ? Math.max(0.15, Math.min(0.6, (tiro-50)/200)) : 0.92;
   const scored = Math.random()<scoreChance;
   const keeper=document.getElementById('penKeeper');
   if(keeper) keeper.textContent = keeperDir==='left'?'⬅️🧤':keeperDir==='right'?'🧤➡️':'🧤';
@@ -2041,8 +2104,8 @@ function startMatch(mode){
     ball:{x:FIELD_W/2,y:FIELD_H/2,vx:0,vy:0,r:9},
     player:{x:playerStartX,y:FIELD_H/2,vx:0,vy:0,r:16,team:'me',id:'you',maxSpeed,userControlled:!startAsSub},
     mates:[
-      {x:190,y:FIELD_H/2-110,vx:0,vy:0,r:15,team:'me',id:'mate1',role:'mid',name:'Compañero 1',home:{x:220,y:FIELD_H/2-110}},
-      {x:190,y:FIELD_H/2+110,vx:0,vy:0,r:15,team:'me',id:'mate2',role:'mid',name:'Compañero 2',home:{x:220,y:FIELD_H/2+110}},
+      {x:190,y:FIELD_H/2-110,vx:0,vy:0,r:15,team:'me',id:'mate1',role:'mid',name:'Compañero 1',home:{x:220,y:FIELD_H/2-110},hiddenTraitId:state.squad.mates[0].trait},
+      {x:190,y:FIELD_H/2+110,vx:0,vy:0,r:15,team:'me',id:'mate2',role:'mid',name:'Compañero 2',home:{x:220,y:FIELD_H/2+110},hiddenTraitId:state.squad.mates[1].trait},
     ],
     gkMe: isGKRole
       ? {x:300,y:FIELD_H/2,vx:0,vy:0,r:15,team:'me',id:'gkMe',home:{x:330,y:FIELD_H/2}}
@@ -2159,7 +2222,7 @@ function handleInput(dt){
   const turboActive = turboHeld && match.turbo>1;
   const speed = p.maxSpeed * (turboActive?1.55:1) * (p.stumbleTimer>0?0.5:1);
   const mag = Math.hypot(ix,iy);
-  const accelLerp = hasPS('aceleracion') ? 0.4 : 0.25;
+  const accelLerp = (hasPS('aceleracion') ? 0.4 : 0.25) * (hasHiddenTrait(p,'rayo') ? 1.15 : 1);
   if(mag>0.06){
     const nx=ix/mag, ny=iy/mag; const scaledSpeed = speed*Math.min(1,mag);
     p.vx += (nx*scaledSpeed - p.vx)*accelLerp;
@@ -2168,8 +2231,8 @@ function handleInput(dt){
   } else {
     p.vx*=0.85; p.vy*=0.85;
   }
-  const turboMul = hasPS('turbo_maestro') ? 0.65 : 1;
-  const turboRegenMul = hasPS('turbo_maestro') ? 1.4 : 1;
+  const turboMul = (hasPS('turbo_maestro') ? 0.65 : 1) * (hasHiddenTrait(p,'motor') ? 0.82 : 1);
+  const turboRegenMul = (hasPS('turbo_maestro') ? 1.4 : 1) * (hasHiddenTrait(p,'motor') ? 1.25 : 1);
   if(turboActive){ match.turbo=Math.max(0,match.turbo-1.1*dt*turboMul); } else { match.turbo=Math.min(100, match.turbo+0.5*dt*turboRegenMul); }
   document.getElementById('turboFill').style.width = match.turbo+'%';
 
@@ -2190,10 +2253,12 @@ function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
 function tryKick(entity, powerRatio, aimOverride){
   const ball=match.ball;
   const isYouKicking = entity===match.player;
-  const range = entity.r+ball.r+16 + (isYouKicking && hasPS('iman') ? 8 : 0);
+  const range = entity.r+ball.r+16 + (isYouKicking && hasPS('iman') ? 8 : 0) + (hasHiddenTrait(entity,'imantado') ? 6 : 0);
   if(dist(entity, ball) > range) return false;
   const s = state.stats;
-  const skillMul = entity.team==='me' ? (0.75 + s.tiro/99*0.6) : 1;
+  let skillMul = entity.team==='me' ? (0.75 + s.tiro/99*0.6) : 1;
+  if(entity.team==='me' && hasHiddenTrait(entity,'killer') && Math.abs((FIELD_W-20)-entity.x)<180) skillMul *= 1.08;
+  if(entity.team==='me' && hasHiddenTrait(entity,'corazon') && match.scoreA<match.scoreB) skillMul *= 1.06;
   let power = (4.2 + powerRatio*9.5) * skillMul;
   if(isYouKicking && hasPS('francotirador')) power *= 1.15;
   const useUserAim = entity===match.player && entity.userControlled && !aimOverride;
@@ -2248,6 +2313,7 @@ function doDribble(defender){
   const s=state.stats;
   let chance = Math.max(0.15, Math.min(0.9, 0.45 + (s.regate-60)/160));
   if(hasPS('curva')) chance = Math.min(0.95, chance+0.12);
+  if(hasHiddenTrait(match.player,'vision')) chance = Math.min(0.95, chance+0.06);
   const p = match.player;
   if(Math.random() < chance){
     const dirx = match.facing.x||1, diry = match.facing.y||0;
@@ -2268,6 +2334,8 @@ function doTackle(attacker){
   const s=state.stats;
   let chance = Math.max(0.15, Math.min(0.85, 0.4 + (s.defensa-60)/150));
   if(hasPS('muro')) chance = Math.min(0.93, chance+0.15);
+  if(hasHiddenTrait(match.player,'muralla')) chance = Math.min(0.95, chance+0.1);
+  if(hasHiddenTrait(match.player,'incordio')) chance = Math.min(0.95, chance+0.05);
   const p = match.player;
   if(Math.random() < chance){
     const ball=match.ball;
@@ -2308,7 +2376,8 @@ function aiFor(list, enemies, enemyGK, teamTag){
   let closest=null, cd=Infinity;
   list.forEach(e=>{ const d=dist(e,ball); if(d<cd){cd=d; closest=e;} });
   list.forEach(e=>{
-    if(e===closest && cd<chaseRange){
+    const myChaseRange = chaseRange + (teamTag==='me' && hasHiddenTrait(e,'incordio') ? 20 : 0);
+    if(e===closest && cd<myChaseRange){
       const goalX = teamTag==='me'? FIELD_W-20 : 20;
       const distToGoal = Math.abs(goalX-e.x);
       if(distToGoal<260 && cd<44){
@@ -2320,7 +2389,8 @@ function aiFor(list, enemies, enemyGK, teamTag){
           target = teammates.reduce((best,t)=> (forwardDir>0? t.x>best.x : t.x<best.x) ? t : best, teammates[0]);
         }
         const aim = target? norm(target.x-e.x, target.y-e.y) : norm(goalX-e.x, FIELD_H/2-e.y);
-        tryKick(e, 0.4+Math.random()*0.3, aim);
+        const passPower = 0.4+Math.random()*0.3 + (hasHiddenTrait(e,'vision') ? 0.08 : 0);
+        tryKick(e, passPower, aim);
       } else {
         moveToward(e, ball.x, ball.y, 0.9);
       }
@@ -2345,7 +2415,8 @@ function aimAtGoal(e, teamTag){
 }
 function moveToward(e, tx, ty, mul){
   const dx=tx-e.x, dy=ty-e.y; const l=Math.hypot(dx,dy);
-  const spd = 2.1*mul*(e.freshBoost||1)*(e.stunTimer>0?0.3:1)*(e.stumbleTimer>0?0.5:1);
+  const rayoBoost = (e.team==='me' && hasHiddenTrait(e,'rayo')) ? 1.12 : 1;
+  const spd = 2.1*mul*rayoBoost*(e.freshBoost||1)*(e.stunTimer>0?0.3:1)*(e.stumbleTimer>0?0.5:1);
   if(l>4){ e.vx += ((dx/l)*spd - e.vx)*0.15; e.vy += ((dy/l)*spd - e.vy)*0.15; }
   else { e.vx*=0.8; e.vy*=0.8; }
 }
@@ -2359,7 +2430,8 @@ function gkBehavior(gk, goalX, threats){
   if(isShot){
     gk._reactTimer = (gk._reactTimer||0) + 1;
     const decay = Math.exp(-gk._reactTimer/9);
-    const errorMag = speed*6.5*decay + GOAL_HALF*0.16;
+    let errorMag = speed*6.5*decay + GOAL_HALF*0.16;
+    if(gk===match.player && hasHiddenTrait(match.player,'felino')) errorMag *= 0.78;
     const err = (Math.random()-0.5)*2*errorMag;
     targetY = Math.max(GOAL_Y1-24, Math.min(GOAL_Y2+24, ball.y+err));
     mul = 1.05;
@@ -2670,6 +2742,7 @@ function endMatch(forfeited){
 
   checkSeasonGoals();
   checkPlaystyleUnlocks();
+  checkHiddenTraitReveal();
   checkTitleUnlocks();
 
   state.matchday++;
@@ -2726,6 +2799,7 @@ function endCupMatch(forfeited){
   if(won) wonEnvelope = rollEnvelopeRarity();
   checkSeasonGoals();
   checkPlaystyleUnlocks();
+  checkHiddenTraitReveal();
   checkTitleUnlocks();
   maybeGenerateFanMail();
   save();
@@ -2765,6 +2839,7 @@ function endSuperMatch(forfeited){
   if(won) wonEnvelope = rollEnvelopeRarity();
   checkSeasonGoals();
   checkPlaystyleUnlocks();
+  checkHiddenTraitReveal();
   checkTitleUnlocks();
   maybeGenerateFanMail();
   save();
@@ -2813,6 +2888,7 @@ function endChampionsMatch(forfeited){
   if(won) wonEnvelope = rollEnvelopeRarity();
   checkSeasonGoals();
   checkPlaystyleUnlocks();
+  checkHiddenTraitReveal();
   checkTitleUnlocks();
   maybeGenerateFanMail();
   save();
@@ -2861,6 +2937,7 @@ function endWorldCupMatch(forfeited){
   if(won) wonEnvelope = rollEnvelopeRarity();
   checkSeasonGoals();
   checkPlaystyleUnlocks();
+  checkHiddenTraitReveal();
   checkTitleUnlocks();
   maybeGenerateFanMail();
   save();
