@@ -42,6 +42,22 @@ body{
   .topbar{ flex-wrap:wrap; gap:10px; }
   .xpwrap{ width:100%; order:5; }
 }
+/* ---------- forced UI size (Ajustes > tamaño de interfaz), independent of real screen width ---------- */
+.app.ui-mobile .topbar{ flex-wrap:wrap; gap:10px; }
+.app.ui-mobile .xpwrap{ width:100%; order:5; }
+.app.ui-mobile .layout{ flex-direction:column; }
+.app.ui-mobile .tabs{ width:100%; flex-direction:row; overflow-x:auto; }
+.app.ui-mobile .tab-btn{ flex:none; }
+.app.ui-mobile .btn{ padding:15px 22px; font-size:15px; }
+.app.ui-mobile .chip-btn{ padding:12px 15px; font-size:13.5px; }
+.app.ui-mobile .menu-grid{ grid-template-columns:repeat(2,1fr); }
+.app.ui-mobile .club-grid{ grid-template-columns:repeat(2,1fr); }
+.app.ui-mobile .squad-grid{ grid-template-columns:repeat(2,1fr); }
+.app.ui-desktop .topbar{ flex-wrap:nowrap; }
+.app.ui-desktop .xpwrap{ width:220px; order:0; }
+.app.ui-desktop .layout{ flex-direction:row; }
+.app.ui-desktop .tabs{ width:190px; flex-direction:column; overflow-x:visible; }
+.app.ui-desktop .tab-btn{ flex:auto; }
 .xpbar-outer{height:10px;border-radius:6px;background:rgba(255,255,255,0.08);overflow:hidden;border:1px solid var(--border);}
 .xpbar-inner{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .6s cubic-bezier(.2,.9,.3,1);}
 .xplabel{font-size:11px;color:var(--muted);margin-top:4px;display:flex;justify-content:space-between;}
@@ -542,7 +558,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">CUBE FC 26 v2 — menú principal pulido (Manager ahora solo se elige desde dentro de Carrera, tarjetas con brillo/glow y animación de entrada) + alineación titular sobre un mini-campo en Plantilla del Manager (elige quién de tus 4 juega en cada posición, afecta a quién marca y a la fuerza del equipo) + partidos de Manager ahora se pueden ver en un campo con los cubos moviéndose igual que en el modo Futbolista (no los juegas, pero se ven en vivo con goles animados, o saltas al resultado si tienes prisa) + Modo Manager completo (elige división y club, plantilla generada, fichajes, tácticas, finanzas, estadio mejorable, calendario con comentarios en directo, noticias, ascenso/descenso) + elección de club con escudos/estrellas al empezar carrera de futbolista · Cube League: Career — pirámide de 8 divisiones con 10 equipos (empiezas en División 8, asciendes ganando tu división, los 2 primeros se clasifican a la Champions Cube) + eliges tu nombre (editable en Jugador con ✏️) + campo y balón propios por competición + explosiones de gol únicas por tipo + celebraciones de 5 seg al marcar + emotes de 5 seg + rasgos ocultos + ataque IA realista + porteros con reacción realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible + posición (incl. portero jugable) al fichar + calendario real + prórroga y penaltis en eliminatorias + resumen de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + objetivos de temporada + clima dinámico + sobres coleccionables + buzón.</div>
+    <div class="footer-note">CUBE FC 26 v3 — Ajustes ahora tiene tamaño de interfaz (Auto/Ordenador/Móvil) para forzar una interfaz más grande y táctil o más compacta en cualquier pantalla, aparte del modo de controles del partido + menú principal pulido (Manager ahora solo se elige desde dentro de Carrera, tarjetas con brillo/glow y animación de entrada) + alineación titular sobre un mini-campo en Plantilla del Manager (elige quién de tus 4 juega en cada posición, afecta a quién marca y a la fuerza del equipo) + partidos de Manager ahora se pueden ver en un campo con los cubos moviéndose igual que en el modo Futbolista (no los juegas, pero se ven en vivo con goles animados, o saltas al resultado si tienes prisa) + Modo Manager completo (elige división y club, plantilla generada, fichajes, tácticas, finanzas, estadio mejorable, calendario con comentarios en directo, noticias, ascenso/descenso) + elección de club con escudos/estrellas al empezar carrera de futbolista · Cube League: Career — pirámide de 8 divisiones con 10 equipos (empiezas en División 8, asciendes ganando tu división, los 2 primeros se clasifican a la Champions Cube) + eliges tu nombre (editable en Jugador con ✏️) + campo y balón propios por competición + explosiones de gol únicas por tipo + celebraciones de 5 seg al marcar + emotes de 5 seg + rasgos ocultos + ataque IA realista + porteros con reacción realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible + posición (incl. portero jugable) al fichar + calendario real + prórroga y penaltis en eliminatorias + resumen de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + objetivos de temporada + clima dinámico + sobres coleccionables + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -1150,7 +1166,7 @@ function freshState(){
     season: 1, matchday: 1,
     schedule: null, table: null,
     mail: [],
-    settings: { controlMode: 'desktop' },
+    settings: { controlMode: 'desktop', uiMode: 'auto' },
     squad: { bench: generateBench(), mates: [
       {name:'Compañero 1', trait: pickRandomTraitId(true)},
       {name:'Compañero 2', trait: pickRandomTraitId(true)},
@@ -1244,7 +1260,8 @@ async function init(){
   }
   syncClubs();
   if(!state.gameDateISO) state.gameDateISO = new Date(2025,7,1).toISOString();
-  if(!state.settings) state.settings = { controlMode:'desktop' };
+  if(!state.settings) state.settings = { controlMode:'desktop', uiMode:'auto' };
+  if(state.settings.uiMode===undefined) state.settings.uiMode = 'auto';
   if(!state.squad || !state.squad.bench) state.squad = { bench: generateBench() };
   if(!state.squad.mates) state.squad.mates = [
     {name:'Compañero 1', trait: pickRandomTraitId(true)},
@@ -2014,15 +2031,25 @@ function bindSettingsButton(){
 }
 function openSettings(){
   const mode = state.settings.controlMode;
+  const uiMode = state.settings.uiMode || 'auto';
   openModal(`<h3>Ajustes</h3><div class="sub" style="margin-top:4px;">Elige cómo quieres controlar a tu cubo en el partido.</div>
     <div style="display:flex;gap:10px;margin-top:14px;">
       <button class="chip-btn ${mode==='desktop'?'active':''}" id="modeDesktop" style="flex:1;padding:16px 10px;text-align:center;">🖥️<br>Ordenador<br><span style="font-weight:400;font-size:10.5px;opacity:.75;">Teclado</span></button>
       <button class="chip-btn ${mode==='mobile'?'active':''}" id="modeMobile" style="flex:1;padding:16px 10px;text-align:center;">📱<br>Móvil<br><span style="font-weight:400;font-size:10.5px;opacity:.75;">Joystick táctil</span></button>
     </div>
-    <div class="sub" style="margin-top:14px;">El cambio se aplica al instante, sin reiniciar nada. Se usará en el próximo partido que juegues.</div>
+    <div class="sub" style="margin-top:20px;">Tamaño de la interfaz — para ver mejor los menús y las pantallas según tu dispositivo.</div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="chip-btn ${uiMode==='auto'?'active':''}" id="uiAuto" style="flex:1;padding:12px 6px;text-align:center;">🔄<br>Auto</button>
+      <button class="chip-btn ${uiMode==='desktop'?'active':''}" id="uiDesktop" style="flex:1;padding:12px 6px;text-align:center;">🖥️<br>Ordenador</button>
+      <button class="chip-btn ${uiMode==='mobile'?'active':''}" id="uiMobile" style="flex:1;padding:12px 6px;text-align:center;">📱<br>Móvil</button>
+    </div>
+    <div class="sub" style="margin-top:14px;">Los cambios se aplican al instante, sin reiniciar nada.</div>
   `);
   document.getElementById('modeDesktop').onclick=()=>setControlMode('desktop');
   document.getElementById('modeMobile').onclick=()=>setControlMode('mobile');
+  document.getElementById('uiAuto').onclick=()=>setUiMode('auto');
+  document.getElementById('uiDesktop').onclick=()=>setUiMode('desktop');
+  document.getElementById('uiMobile').onclick=()=>setUiMode('mobile');
 }
 async function setControlMode(mode){
   if(state.settings.controlMode===mode){ closeModal(); return; }
@@ -2030,6 +2057,21 @@ async function setControlMode(mode){
   await save();
   closeModal();
   toast(mode==='mobile' ? '📱 Modo móvil activado' : '🖥️ Modo ordenador activado');
+}
+function applyUiMode(){
+  const el = document.querySelector('.app');
+  if(!el) return;
+  const mode = (state.settings && state.settings.uiMode) || 'auto';
+  el.classList.toggle('ui-mobile', mode==='mobile');
+  el.classList.toggle('ui-desktop', mode==='desktop');
+}
+async function setUiMode(mode){
+  if((state.settings.uiMode||'auto')===mode){ closeModal(); return; }
+  state.settings.uiMode = mode;
+  await save();
+  applyUiMode();
+  closeModal();
+  toast(mode==='mobile' ? '📱 Interfaz en modo móvil' : mode==='desktop' ? '🖥️ Interfaz en modo ordenador' : '🔄 Interfaz automática según tu pantalla');
 }
 
 /* ============ TRAINING MINIGAME ============ */
@@ -4787,6 +4829,7 @@ async function boot(){
   spawnLoadingFx();
   bindMenuNavigation();
   await Promise.all([ init(), new Promise(res=> runLoadingBar(res)) ]);
+  applyUiMode();
   document.getElementById('loadingScreen').classList.remove('active');
   showTopScreen('mainMenu');
   renderMainMenu();
