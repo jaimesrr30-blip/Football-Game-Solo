@@ -355,7 +355,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">Cube League: Career · v17 — eliges tu nombre al empezar la carrera (editable luego en Jugador con ✏️) + campo y balón propios por competición (Liga clásica, Copa dorada, Supercopa plateada, Champions con balón de estrellas sobre césped estelar, Mundial con balón clásico) + explosiones de gol únicas por tipo (agujero negro de verdad, tormenta, tsunami, galaxia, dragón, divina, prohibida) + celebraciones que le pasan algo a tu cubo 5 seg al marcar + emotes de 5 seg + rasgos ocultos + ataque IA con puntería real + porteros con reacción realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible + posición (incl. portero jugable) al fichar + calendario real + prórroga y penaltis en eliminatorias + resumen de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + liga + buzón.</div>
+    <div class="footer-note">Cube League: Career · v18 — pirámide de 8 divisiones con 10 equipos cada una (empiezas en División 8, asciendes ganando tu división, los 2 primeros de tu división se clasifican a la Champions Cube) + eliges tu nombre al empezar la carrera (editable luego en Jugador con ✏️) + campo y balón propios por competición + explosiones de gol únicas por tipo + celebraciones que le pasan algo a tu cubo 5 seg al marcar + emotes de 5 seg + rasgos ocultos + ataque IA con puntería real + porteros con reacción realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible + posición (incl. portero jugable) al fichar + calendario real + prórroga y penaltis en eliminatorias + resumen de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + viaje al partido + objetivos de temporada + clima dinámico + sobres coleccionables + forma con el entrenador + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -432,7 +432,8 @@ async function storageSet(key, value){
 }
 
 /* ============ DATA ============ */
-const CLUBS = [
+// Old fixed 6-club league, kept only to migrate existing saves' club identity into state.myClub.
+const LEGACY_CLUBS = [
   {name:'Estrellas Cube', color:'#34e0a1', power:70},
   {name:'Galaxy Cubes',   color:'#a855f7', power:78},
   {name:'Neon FC',        color:'#38bdf8', power:71},
@@ -440,6 +441,38 @@ const CLUBS = [
   {name:'Pixel Rovers',   color:'#ef4463', power:69},
   {name:'Titanio SC',     color:'#fb923c', power:73},
 ];
+/* ---- pirámide de 8 divisiones x 10 equipos ---- */
+const DIVISION_PREFIXES = ['Estrellas','Galaxy','Neón','Vórtice','Pixel','Titanio','Dragones','Fénix','Cometa','Nebulosa','Cráter','Meteoro','Plasma','Cuarzo','Rayo','Trueno','Ónix','Zafiro','Turbo','Cyber','Prisma','Eclipse','Cénit','Aurora','Halcón','Pantera','Cóndor','Lince','Tornado','Vulcano','Ámbar','Grafito','Cobalto','Escarcha','Ferrum','Corcel','Centella','Obsidiana','Ráfaga','Orbital'];
+const DIVISION_SUFFIXES = ['Cube','FC'];
+const DIVISION_COLORS = ['#34e0a1','#a855f7','#38bdf8','#f5b942','#ef4463','#fb923c','#22d3ee','#facc15','#a3e635','#f472b6','#60a5fa','#f97316','#4ade80','#c084fc','#fbbf24','#f87171','#2dd4bf','#e879f9','#93c5fd','#fde047'];
+function buildDivisions(){
+  // divisions[0] = División 1 (la más fuerte) ... divisions[7] = División 8 (donde empiezas)
+  const powerBands = [[78,93],[73,85],[68,80],[64,76],[60,71],[56,67],[52,62],[47,58]];
+  const divisions = [];
+  let nameIdx = 0;
+  for(let d=0; d<8; d++){
+    const teams = [];
+    for(let i=0; i<10; i++){
+      const prefix = DIVISION_PREFIXES[nameIdx % DIVISION_PREFIXES.length];
+      const suffix = DIVISION_SUFFIXES[Math.floor(nameIdx/DIVISION_PREFIXES.length) % DIVISION_SUFFIXES.length];
+      const color = DIVISION_COLORS[nameIdx % DIVISION_COLORS.length];
+      const [lo,hi] = powerBands[d];
+      const power = Math.round(lo + (hi-lo)*(i/9));
+      teams.push({ name:`${prefix} ${suffix}`, color, power });
+      nameIdx++;
+    }
+    divisions.push(teams);
+  }
+  return divisions;
+}
+const DIVISIONS = buildDivisions();
+let CLUBS = null;
+function syncClubs(){
+  const pool = DIVISIONS[state.division-1];
+  const you = { name: state.myClub.name, color: state.myClub.color, power: overall(state.stats) };
+  CLUBS = [you, ...pool.slice(0,9)];
+  state.clubIdx = 0;
+}
 const BENCH_NAMES = ['Nova','Rex','Blitz','Orion','Kade','Zeta','Milo','Vex','Draco','Luma'];
 
 /* ---- vida del jugador ---- */
@@ -771,11 +804,12 @@ function makeWorldCup(season, available){
 }
 
 /* ---- season goals ---- */
-function makeSeasonGoals(){
+function makeSeasonGoals(division){
+  const div = division || 8;
   return [
     {id:'goals', label:'Marcar 15 goles en la temporada', type:'goals', target:15, progress:0, done:false, reward:120},
     {id:'assists', label:'Dar 10 asistencias en la temporada', type:'assists', target:10, progress:0, done:false, reward:100},
-    {id:'winLeague', label:'Ganar la Liga Cube', type:'champion', target:1, progress:0, done:false, reward:300},
+    {id:'winLeague', label: div>1 ? `Ganar la División ${div} y ascender` : 'Ganar la Liga Cube (División 1)', type:'champion', target:1, progress:0, done:false, reward:300},
     {id:'balon', label:'Ganar el Balón Cube (30 pts: goles×2 + asistencias)', type:'balon', target:30, progress:0, done:false, reward:250},
   ];
 }
@@ -914,6 +948,8 @@ function freshState(){
     needsNamePrompt: true,
     position: 'delantero',
     clubIdx: 0,
+    division: 8,
+    myClub: { name:'Estrellas Cube', color:'#34e0a1' },
     level: 1, xp: 0,
     stats: { velocidad:58, tiro:55, pase:56, regate:57, defensa:50, fisico:55 },
     equipped: { color:'blue', secondary:'white', trail:'spark', celeb:'jump', explosion:'classic', playstyle:null, title:'novato', frame:'none', emote:'thumbsup' },
@@ -937,7 +973,7 @@ function freshState(){
     lastSeasonSummary: null,
     champions: makeChampions(1, false),
     worldcup: makeWorldCup(1, false),
-    seasonGoals: makeSeasonGoals(),
+    seasonGoals: makeSeasonGoals(8),
     seasonStats: { goals:0, assists:0, recoveries:0 },
     trainingDone: { velocidad:false, tiro:false, regate:false, defensa:false },
     trophyHistory: [],
@@ -968,8 +1004,7 @@ function generateSchedule(){
     rounds.push(round);
     arr.push(arr.shift());
   }
-  const secondLeg = rounds.map(rd=>rd.map(([h,a])=>[a,h]));
-  return [...rounds, ...secondLeg];
+  return rounds;
 }
 
 function addMail(title, body, tag){
@@ -1009,6 +1044,16 @@ async function init(){
   }
   if(state.clubIdx===undefined || state.clubIdx===null) state.clubIdx = 0;
   if(state.form===undefined || state.form===null) state.form = 55;
+  if(!state.division) state.division = 8;
+  if(!state.myClub){
+    const legacy = LEGACY_CLUBS[state.clubIdx] || LEGACY_CLUBS[0];
+    state.myClub = { name: legacy.name, color: legacy.color };
+  }
+  if(!state.divisionMigrated){
+    state.divisionMigrated = true;
+    state.schedule = null; state.table = null; state.matchday = 1;
+  }
+  syncClubs();
   if(!state.gameDateISO) state.gameDateISO = new Date(2025,7,1).toISOString();
   if(!state.settings) state.settings = { controlMode:'desktop' };
   if(!state.squad || !state.squad.bench) state.squad = { bench: generateBench() };
@@ -1019,7 +1064,7 @@ async function init(){
   state.squad.bench.forEach(b=>{ if(!b.trait) b.trait = pickRandomTraitId(true); });
   if(!state.hiddenTrait) state.hiddenTrait = { id: pickRandomTraitId(false), discovered:false, revealAt: state.career.matches+3 };
   if(!state.cup || !state.cup.bracket || state.cup.season!==state.season) state.cup = makeCup(state.season);
-  if(!state.seasonGoals) state.seasonGoals = makeSeasonGoals();
+  if(!state.seasonGoals) state.seasonGoals = makeSeasonGoals(state.division);
   if(!state.seasonStats) state.seasonStats = { goals:0, assists:0, recoveries:0 };
   if(state.career.cupTrophies===undefined) state.career.cupTrophies = 0;
   if(!state.trainingDone) state.trainingDone = { velocidad:false, tiro:false, regate:false, defensa:false };
@@ -1193,7 +1238,7 @@ function showTravelScreen(label, onDone){
 function renderAll(){
   const titleObj = TITLES.find(t=>t.id===state.equipped.title) || TITLES[0];
   document.getElementById('hdrName').innerHTML = `${state.playerName} <span style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:8px;background:rgba(245,185,66,0.18);color:var(--gold);vertical-align:middle;">${titleObj.label}</span> · OVR ${overall(state.stats)}`;
-  document.getElementById('hdrClub').textContent = `${CLUBS[state.clubIdx].name} — ${positionInfo().label} titular`;
+  document.getElementById('hdrClub').textContent = `${CLUBS[state.clubIdx].name} · D${state.division} — ${positionInfo().label} titular`;
   document.getElementById('lvlBadge').textContent = state.level;
   const need = xpToNext(state.level);
   document.getElementById('xpFill').style.width = Math.min(100, (state.xp/need)*100)+'%';
@@ -1652,8 +1697,8 @@ function renderLiga(){
   const rows = sortedTable();
   el.innerHTML = `
     <div class="card">
-      <h2>Liga Cube — Temporada ${state.season}</h2>
-      <div class="sub">Jornada ${Math.min(state.matchday,state.schedule.length)} de ${state.schedule.length}</div>
+      <h2>División ${state.division} — Temporada ${state.season}</h2>
+      <div class="sub">Jornada ${Math.min(state.matchday,state.schedule.length)} de ${state.schedule.length} · Ascienden los 2 primeros a la Champions Cube${state.division>1?' · El campeón sube de división':' · ¡Estás en la cima de Cube League!'}</div>
       <div style="overflow-x:auto;">
       <table class="league">
         <thead><tr><th></th><th style="text-align:left;">Equipo</th><th>PJ</th><th>PG</th><th>PE</th><th>PP</th><th>GF</th><th>GC</th><th>DG</th><th>PTS</th></tr></thead>
@@ -1728,7 +1773,9 @@ function resolveOffer(mailId, accept){
   m.resolved=true; m.read=true; m.accepted=accept;
   if(accept){
     const club = CLUBS[m.offer.clubIdx];
-    state.clubIdx = m.offer.clubIdx;
+    state.myClub = { name: club.name, color: club.color };
+    syncClubs();
+    if(state.table && state.table[0]) state.table[0].name = state.myClub.name;
     addMail(`Bienvenido al ${club.name}`, `Has firmado por ${m.offer.duration} temporada(s). La afición del ${club.name} espera grandes cosas de ti.`, 'Fichaje');
     toast(`Fichado por ${club.name}`);
     save(); renderAll();
@@ -3425,17 +3472,21 @@ function finishSeason(){
   const rows=sortedTable();
   const champ = rows[0];
   const youPos = rows.findIndex(r=>r.idx===state.clubIdx)+1;
-  const wonLeague = champ.idx===state.clubIdx;
+  const wonDivision = champ.idx===state.clubIdx;
+  const wonLeague = wonDivision && state.division===1;
+  const divisionBeforeThisSeason = state.division;
 
   const summary = {
     season: state.season,
     club: CLUBS[state.clubIdx].name,
+    division: divisionBeforeThisSeason,
     goals: state.seasonStats.goals,
     assists: state.seasonStats.assists,
     recoveries: state.seasonStats.recoveries,
     leaguePos: youPos,
     leagueChampName: champ.name,
     wonLeague,
+    wonDivision,
     cup: state.cup.champion ? 'won' : (state.cup.eliminated ? 'lost' : 'unfinished'),
     supercopa: !state.supercopa.applicable ? 'none' : (state.supercopa.resolved ? (state.supercopa.won?'won':'lost') : 'unfinished'),
     champions: !state.champions.qualified ? 'none' : (state.champions.champion ? 'won' : (state.champions.eliminated ? 'lost' : 'unfinished')),
@@ -3444,26 +3495,33 @@ function finishSeason(){
     goalsTotal: state.seasonGoals.length,
   };
 
+  if(wonDivision){
+    const goal = state.seasonGoals.find(g=>g.type==='champion');
+    if(goal && !goal.done){ goal.done=true; state.xp += goal.reward; }
+  }
   if(wonLeague){
     state.career.trophies++;
     state.trophyHistory.push({season:state.season, type:'liga', club:CLUBS[state.clubIdx].name});
-    const goal = state.seasonGoals.find(g=>g.type==='champion');
-    if(goal && !goal.done){ goal.done=true; state.xp += goal.reward; }
-    addMail(`🏆 ¡CAMPEÓN DE LIGA!`, `Has llevado al ${CLUBS[state.clubIdx].name} a ganar la Liga Cube en la Temporada ${state.season}. La afición celebra por todo lo alto.`, 'Trofeo');
+    addMail(`🏆 ¡CAMPEÓN DE LIGA!`, `Has llevado al ${CLUBS[state.clubIdx].name} a ganar la División 1 en la Temporada ${state.season}. ¡Eres el mejor equipo de Cube League! La afición celebra por todo lo alto.`, 'Trofeo');
+  } else if(wonDivision){
+    state.division--;
+    addMail(`🥳 ¡Ascenso conseguido!`, `Ganaste la División ${divisionBeforeThisSeason} con el ${CLUBS[state.clubIdx].name} y subes a la División ${state.division} la próxima temporada. Un reto más difícil te espera.`, 'Liga');
   } else {
-    addMail(`Fin de temporada — ${champ.name} campeón`, `Terminaste la Temporada ${state.season} en la posición ${youPos} con el ${CLUBS[state.clubIdx].name}. Nueva temporada, nuevo objetivo: el título.`, 'Liga');
+    addMail(`Fin de temporada — ${champ.name} campeón`, `Terminaste la Temporada ${state.season} en la posición ${youPos} de la División ${divisionBeforeThisSeason} con el ${CLUBS[state.clubIdx].name}. Nueva temporada, nuevo objetivo: el ascenso.`, 'Liga');
   }
   setupSupercopa(wonLeague);
   maybeGenerateTransferOffer();
   advanceCalendar(60);
-  state.season++; state.matchday=1; state.table=makeTable(); state.schedule=generateSchedule();
+  state.season++; state.matchday=1;
+  syncClubs();
+  state.table=makeTable(); state.schedule=generateSchedule();
   state.cup = makeCup(state.season);
-  state.seasonGoals = makeSeasonGoals();
+  state.seasonGoals = makeSeasonGoals(state.division);
   state.seasonStats = { goals:0, assists:0, recoveries:0 };
 
-  const qualifiesChampions = wonLeague || youPos<=3;
+  const qualifiesChampions = youPos<=2;
   state.champions = makeChampions(state.season, qualifiesChampions);
-  if(qualifiesChampions) addMail('🌟 Clasificado a la Champions Cube', `Tu Temporada ${state.season-1} te mete en la Champions Cube — pruébate contra los mejores equipos de la región.`, 'Champions');
+  if(qualifiesChampions) addMail('🌟 Clasificado a la Champions Cube', `Terminar entre los 2 primeros de tu división te mete en la Champions Cube — pruébate contra los mejores equipos de la región.`, 'Champions');
 
   const worldCupNow = state.season % 4 === 0;
   state.worldcup = makeWorldCup(state.season, worldCupNow);
@@ -3661,8 +3719,10 @@ function competitionResultLine(label, icon, value){
 }
 function showSeasonSummaryModal(summary){
   const leagueLine = summary.wonLeague
-    ? `<div class="trophy-row"><span>🏆</span><span style="flex:1;">Liga Cube</span><span style="font-weight:800;color:var(--accent);">Campeón</span></div>`
-    : `<div class="trophy-row"><span>📊</span><span style="flex:1;">Liga Cube</span><span style="font-weight:800;color:var(--muted);">${summary.leaguePos}º puesto (campeón: ${summary.leagueChampName})</span></div>`;
+    ? `<div class="trophy-row"><span>🏆</span><span style="flex:1;">Liga Cube (División 1)</span><span style="font-weight:800;color:var(--accent);">Campeón</span></div>`
+    : summary.wonDivision
+      ? `<div class="trophy-row"><span>🥳</span><span style="flex:1;">División ${summary.division}</span><span style="font-weight:800;color:var(--accent);">Campeón — ¡Ascenso!</span></div>`
+      : `<div class="trophy-row"><span>📊</span><span style="flex:1;">División ${summary.division}</span><span style="font-weight:800;color:var(--muted);">${summary.leaguePos}º puesto (campeón: ${summary.leagueChampName})</span></div>`;
   const rows = [leagueLine, competitionResultLine('Copa Cube','🥇', summary.cup)];
   if(summary.supercopa!=='none') rows.push(competitionResultLine('Supercopa Cube','🏆', summary.supercopa));
   if(summary.champions!=='none') rows.push(competitionResultLine('Champions Cube','🌟', summary.champions));
@@ -3671,7 +3731,7 @@ function showSeasonSummaryModal(summary){
     <div style="text-align:center; padding:6px 0 14px;">
       <div style="font-size:34px;">📅</div>
       <div style="font-size:22px;font-weight:900;background:linear-gradient(135deg,var(--gold),#ffe58a);-webkit-background-clip:text;background-clip:text;color:transparent;margin-top:4px;">FIN DE TEMPORADA ${summary.season}</div>
-      <div class="sub" style="margin-top:4px;">Resumen de tu año con el ${summary.club}</div>
+      <div class="sub" style="margin-top:4px;">Resumen de tu año con el ${summary.club} (División ${summary.division})</div>
     </div>
     <div class="stat-mini-grid">
       <div class="mini-stat"><div class="v">${summary.goals}</div><div class="k">Goles</div></div>
