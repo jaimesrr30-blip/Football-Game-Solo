@@ -264,13 +264,32 @@ table.league tr.me td.tname{ color:var(--accent); }
 .menu-logo{ position:relative; z-index:1; font-size:15px; letter-spacing:4px; color:var(--muted); text-transform:uppercase; margin-bottom:6px; }
 .menu-title{ position:relative; z-index:1; font-size:36px; font-weight:900; letter-spacing:1px; margin-bottom:30px; background:linear-gradient(135deg,#fff,#9fd8ff); -webkit-background-clip:text; background-clip:text; color:transparent; text-align:center; }
 .menu-grid{ position:relative; z-index:1; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:16px; max-width:920px; width:100%; }
-.mode-card{ position:relative; border-radius:20px; padding:24px 14px; text-align:center; cursor:pointer; border:1px solid var(--border); background:var(--panel); backdrop-filter:blur(14px); transition:.2s ease; overflow:hidden; }
-.mode-card:hover{ transform:translateY(-4px) scale(1.04); border-color:var(--accent2); box-shadow:0 10px 30px rgba(56,189,248,0.3); }
-.mode-card:active{ transform:scale(0.97); }
-.mode-card .ico{ font-size:36px; margin-bottom:10px; }
-.mode-card .label{ font-weight:800; font-size:14.5px; }
-.mode-card.soon{ opacity:.55; }
-.mode-card.soon::after{ content:'Próximamente'; position:absolute; top:8px; right:8px; font-size:8.5px; background:rgba(0,0,0,0.5); padding:3px 7px; border-radius:8px; color:var(--gold); font-weight:800; }
+.mode-card{
+  --card-accent: var(--accent2); --card-glow: rgba(56,189,248,0.35);
+  position:relative; border-radius:22px; padding:26px 14px; text-align:center; cursor:pointer;
+  border:1px solid var(--border); background:var(--panel); backdrop-filter:blur(14px); overflow:hidden;
+  transition:transform .22s cubic-bezier(.2,.9,.3,1), box-shadow .22s ease, border-color .22s ease;
+  animation:modeCardIn .5s cubic-bezier(.2,.9,.3,1) both;
+}
+@keyframes modeCardIn{ from{opacity:0; transform:translateY(18px) scale(.94);} to{opacity:1; transform:translateY(0) scale(1);} }
+.mode-card::before{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.16) 50%, transparent 70%);
+  transform:translateX(-130%); transition:transform .65s ease;
+}
+.mode-card:hover::before{ transform:translateX(130%); }
+.mode-card:hover{ transform:translateY(-6px) scale(1.05); border-color:var(--card-accent); box-shadow:0 14px 34px var(--card-glow); }
+.mode-card:active{ transform:scale(0.96) translateY(-2px); }
+.mode-card .ico-wrap{
+  width:60px; height:60px; margin:0 auto 12px; border-radius:50%; position:relative; z-index:1;
+  display:flex; align-items:center; justify-content:center; font-size:29px;
+  background:radial-gradient(circle, var(--card-accent) 0%, transparent 72%);
+  box-shadow:0 0 26px var(--card-glow); transition:transform .22s ease;
+}
+.mode-card:hover .ico-wrap{ transform:scale(1.12) rotate(-4deg); }
+.mode-card .label{ position:relative; z-index:1; font-weight:800; font-size:14.5px; }
+.mode-card.soon{ opacity:.6; }
+.mode-card.soon::after{ content:'Próximamente'; position:absolute; top:8px; right:8px; font-size:8.5px; background:rgba(0,0,0,0.5); padding:3px 7px; border-radius:8px; color:var(--gold); font-weight:800; z-index:2; }
 .menu-back-btn{ position:absolute; top:16px; left:16px; z-index:2; }
 
 .choice-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:6px; }
@@ -306,6 +325,15 @@ table.league tr.me td.tname{ color:var(--accent); }
 .tactic-option:hover{ border-color:var(--accent2); }
 .stadium-tier-row{ display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--border); }
 .stadium-tier-row:last-child{ border-bottom:none; }
+.mini-pitch{ position:relative; background:#0e2f1f; border-radius:16px; height:200px; border:2px solid rgba(255,255,255,0.22); overflow:hidden; margin-bottom:18px; }
+.mini-pitch::before{ content:''; position:absolute; left:50%; top:0; bottom:0; width:2px; background:rgba(255,255,255,0.2); }
+.mini-pitch::after{ content:''; position:absolute; left:50%; top:50%; width:70px; height:70px; margin:-35px 0 0 -35px; border:2px solid rgba(255,255,255,0.2); border-radius:50%; }
+.mini-pitch-slot{ position:absolute; width:78px; transform:translate(-50%,-50%); text-align:center; cursor:pointer; transition:.15s ease; z-index:1; }
+.mini-pitch-slot:hover{ transform:translate(-50%,-50%) scale(1.08); }
+.mini-pitch-slot .pchip{ width:46px;height:46px;border-radius:11px; margin:0 auto 4px; display:flex;align-items:center;justify-content:center; font-weight:900; font-size:11px; box-shadow:0 4px 14px rgba(0,0,0,0.45); border:2px solid rgba(255,255,255,0.55); transition:.15s ease; }
+.mini-pitch-slot:hover .pchip{ box-shadow:0 0 18px rgba(255,255,255,0.55); }
+.mini-pitch-slot .pname{ font-size:10px; font-weight:700; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,0.85); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mini-pitch-slot .povr{ font-size:9px; color:var(--gold); font-weight:800; }
 
 /* ---------- settings gear ---------- */
 .gear-btn{ width:40px;height:40px;border-radius:50%; border:1px solid var(--border); background:var(--panel-solid); color:var(--text); font-size:17px; cursor:pointer; flex:none; transition:.15s ease; }
@@ -455,6 +483,28 @@ table.league tr.me td.tname{ color:var(--accent); }
 
   <div id="managerWrap" class="screen"></div>
 
+  <div id="managerMatchScreen" class="screen">
+    <div class="topbar">
+      <div class="crest">🧠</div>
+      <div class="who">
+        <div class="name" id="mgrMatchTeams">Equipo A vs Equipo B</div>
+        <div class="club" id="mgrMatchMinute">0'</div>
+      </div>
+      <div style="font-size:24px;font-weight:900;" id="mgrMatchScore">0 - 0</div>
+    </div>
+    <div class="field-wrap" style="margin-top:14px;">
+      <canvas id="mgrMatchCanvas" width="900" height="520"></canvas>
+      <div class="goal-banner" id="mgrGoalBanner">¡GOL!</div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <div style="display:flex;gap:10px;margin-bottom:10px;">
+        <button class="btn secondary" id="mgrSkipMatchBtn" style="flex:1;">⏩ Saltar al resultado</button>
+        <button class="btn big" id="mgrMatchContinueBtn" style="flex:1;display:none;">✅ Continuar</button>
+      </div>
+      <div id="mgrMatchCommentary" style="max-height:220px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
   <div id="careerScreen" class="screen">
   <div id="hq-wrap">
     <div class="topbar">
@@ -492,7 +542,7 @@ table.league tr.me td.tname{ color:var(--accent); }
         <div id="tab-buzon" class="tabpane" style="display:none"></div>
       </div>
     </div>
-    <div class="footer-note">CUBE FC 26 v1 — pantalla de carga + menú principal con 8 modos (Carrera y Manager jugables; Partido rápido/Ultimate Team/Mundo abierto/Tienda marcados como "Próximamente") + Modo Manager completo (elige división y club, plantilla generada, fichajes, tácticas, finanzas, estadio mejorable, calendario con partidos simulados y comentarios en directo, noticias, ascenso/descenso) + elección de club con escudos/estrellas al empezar carrera de futbolista · Cube League: Career — pirámide de 8 divisiones con 10 equipos (empiezas en División 8, asciendes ganando tu división, los 2 primeros se clasifican a la Champions Cube) + eliges tu nombre (editable en Jugador con ✏️) + campo y balón propios por competición + explosiones de gol únicas por tipo + celebraciones de 5 seg al marcar + emotes de 5 seg + rasgos ocultos + ataque IA realista + porteros con reacción realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible + posición (incl. portero jugable) al fichar + calendario real + prórroga y penaltis en eliminatorias + resumen de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + objetivos de temporada + clima dinámico + sobres coleccionables + buzón.</div>
+    <div class="footer-note">CUBE FC 26 v2 — menú principal pulido (Manager ahora solo se elige desde dentro de Carrera, tarjetas con brillo/glow y animación de entrada) + alineación titular sobre un mini-campo en Plantilla del Manager (elige quién de tus 4 juega en cada posición, afecta a quién marca y a la fuerza del equipo) + partidos de Manager ahora se pueden ver en un campo con los cubos moviéndose igual que en el modo Futbolista (no los juegas, pero se ven en vivo con goles animados, o saltas al resultado si tienes prisa) + Modo Manager completo (elige división y club, plantilla generada, fichajes, tácticas, finanzas, estadio mejorable, calendario con comentarios en directo, noticias, ascenso/descenso) + elección de club con escudos/estrellas al empezar carrera de futbolista · Cube League: Career — pirámide de 8 divisiones con 10 equipos (empiezas en División 8, asciendes ganando tu división, los 2 primeros se clasifican a la Champions Cube) + eliges tu nombre (editable en Jugador con ✏️) + campo y balón propios por competición + explosiones de gol únicas por tipo + celebraciones de 5 seg al marcar + emotes de 5 seg + rasgos ocultos + ataque IA realista + porteros con reacción realista + penaltis interactivos + Copa/Champions/Mundial desde Octavos con eliminatoria visible + posición (incl. portero jugable) al fichar + calendario real + prórroga y penaltis en eliminatorias + resumen de fin de temporada + Marcos + negociar fichajes + repetición de tu mejor jugada + Supercopa Cube + Títulos + música de menú + Playstyles + Balón Cube + entrada/regate contextual (⚔️/E) + vida del jugador + entrenamientos + objetivos de temporada + clima dinámico + sobres coleccionables + buzón.</div>
   </div>
 
   <div id="match-wrap" class="match-wrap">
@@ -1203,7 +1253,10 @@ async function init(){
   state.squad.bench.forEach(b=>{ if(!b.trait) b.trait = pickRandomTraitId(true); });
   if(!state.hiddenTrait) state.hiddenTrait = { id: pickRandomTraitId(false), discovered:false, revealAt: state.career.matches+3 };
   if(!state.manager) state.manager = { active:false };
-  if(state.manager.active) syncManagerClubs();
+  if(state.manager.active){
+    if(!state.manager.lineup) state.manager.lineup = autoPickLineup(state.manager.squad);
+    syncManagerClubs();
+  }
   if(!state.cup || !state.cup.bracket || state.cup.season!==state.season) state.cup = makeCup(state.season);
   if(!state.seasonGoals) state.seasonGoals = makeSeasonGoals(state.division);
   if(!state.seasonStats) state.seasonStats = { goals:0, assists:0, recoveries:0 };
@@ -3912,10 +3965,24 @@ const COMMENTARY_FILLERS = [
 ];
 function freshManagerState(){ return { active:false }; }
 let MANAGER_CLUBS = null;
+function autoPickLineup(squad){
+  const lineup = {};
+  ['POR','DEF','MED','DEL'].forEach(pos=>{
+    const candidates = squad.filter(p=>p.pos===pos).sort((a,b)=>b.ovr-a.ovr);
+    lineup[pos] = candidates.length ? candidates[0].id : (squad[0] ? squad[0].id : null);
+  });
+  return lineup;
+}
+function lineupPlayers(){
+  const mgr = state.manager;
+  return ['POR','DEF','MED','DEL']
+    .map(pos=> mgr.squad.find(p=>p.id===mgr.lineup[pos]) || mgr.squad.find(p=>p.pos===pos) || mgr.squad[0])
+    .filter(Boolean);
+}
 function managerSquadPower(){
-  const s = state.manager.squad;
-  if(!s || !s.length) return 60;
-  return Math.round(s.reduce((a,p)=>a+p.ovr,0)/s.length);
+  const starters = lineupPlayers();
+  if(!starters.length) return 60;
+  return Math.round(starters.reduce((a,p)=>a+p.ovr,0)/starters.length);
 }
 function syncManagerClubs(){
   const pool = DIVISIONS[state.manager.division-1].filter(t=>t.name!==state.manager.clubName);
@@ -3995,7 +4062,8 @@ function buildMatchReport(isHome, myGoals, oppGoals, myName, oppName){
   const homeName = isHome?myName:oppName, awayName = isHome?oppName:myName;
   const homeGoals = isHome?myGoals:oppGoals, awayGoals = isHome?oppGoals:myGoals;
   const events = [];
-  for(let i=0;i<myGoals;i++) events.push({minute: 1+Math.floor(Math.random()*89), mine:true, scorer: pickScorer(state.manager.squad)});
+  const starters = lineupPlayers();
+  for(let i=0;i<myGoals;i++) events.push({minute: 1+Math.floor(Math.random()*89), mine:true, scorer: pickScorer(starters)});
   for(let i=0;i<oppGoals;i++) events.push({minute: 1+Math.floor(Math.random()*89), mine:false});
   events.sort((a,b)=>a.minute-b.minute);
   const commentary = [];
@@ -4006,7 +4074,7 @@ function buildMatchReport(isHome, myGoals, oppGoals, myName, oppName){
       commentary.push({ minute: Math.max(lastMinute+1, ev.minute-(fillerCount-f)*3), text: COMMENTARY_FILLERS[Math.floor(Math.random()*COMMENTARY_FILLERS.length)], goal:false });
     }
     const scoringTeamName = ev.mine ? myName : oppName;
-    commentary.push({ minute: ev.minute, text: `⚽ ¡GOL! ${ev.mine?ev.scorer.name+' marca para el ':'Marca el '}${scoringTeamName}.`, goal:true });
+    commentary.push({ minute: ev.minute, text: `⚽ ¡GOL! ${ev.mine?ev.scorer.name+' marca para el ':'Marca el '}${scoringTeamName}.`, goal:true, mine: ev.mine, homeGoal: (ev.mine===isHome) });
     lastMinute = ev.minute;
   });
   for(let i=0;i<2;i++) commentary.push({ minute: Math.min(90,lastMinute+3+i*4), text: COMMENTARY_FILLERS[Math.floor(Math.random()*COMMENTARY_FILLERS.length)], goal:false });
@@ -4046,11 +4114,110 @@ function playManagerMatchday(){
   });
   mgr.lastMatchReport = report;
   mgr.matchday++;
-  let seasonEnded = false;
-  if(mgr.matchday > mgr.schedule.length){ finishManagerSeason(); seasonEnded=true; }
+  if(mgr.matchday > mgr.schedule.length){ finishManagerSeason(); }
   save();
-  renderMgrCalendario();
-  return seasonEnded;
+  startManagerMatchSpectator(mgr, report, ()=> renderMgrCalendario());
+}
+function drawSpectatorPitch(ctx, theme){
+  ctx.clearRect(0,0,FIELD_W,FIELD_H);
+  ctx.fillStyle=theme.bg; ctx.fillRect(0,0,FIELD_W,FIELD_H);
+  for(let i=0;i<10;i++){ ctx.fillStyle= i%2===0? theme.stripe : 'transparent'; ctx.fillRect(i*(FIELD_W/10),0,FIELD_W/10,FIELD_H); }
+  ctx.strokeStyle=theme.line; ctx.lineWidth=2;
+  ctx.strokeRect(6,6,FIELD_W-12,FIELD_H-12);
+  ctx.beginPath(); ctx.moveTo(FIELD_W/2,6); ctx.lineTo(FIELD_W/2,FIELD_H-6); ctx.stroke();
+  ctx.beginPath(); ctx.arc(FIELD_W/2,FIELD_H/2,55,0,Math.PI*2); ctx.stroke();
+  ctx.strokeRect(6,GOAL_Y1-30,110,GOAL_HALF*2+60);
+  ctx.strokeRect(FIELD_W-116,GOAL_Y1-30,110,GOAL_HALF*2+60);
+  ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fillRect(0,GOAL_Y1,6,GOAL_HALF*2);
+  ctx.fillRect(FIELD_W-6,GOAL_Y1,6,GOAL_HALF*2);
+}
+function spectatorEntities(){
+  const mk=(x,y,label)=>({x,y,r:label==='PT'?16:15,label,baseX:x,baseY:y,phase:Math.random()*10});
+  return {
+    me: [ mk(60,FIELD_H/2,'PT'), mk(210,FIELD_H/2-70,''), mk(340,FIELD_H/2+60,''), mk(430,FIELD_H/2,'') ],
+    opp: [ mk(FIELD_W-60,FIELD_H/2,'PT'), mk(FIELD_W-210,FIELD_H/2+70,''), mk(FIELD_W-340,FIELD_H/2-60,''), mk(FIELD_W-430,FIELD_H/2,'') ],
+  };
+}
+function startManagerMatchSpectator(mgr, report, onFinish){
+  showTopScreen('managerMatchScreen');
+  const theme = COMPETITION_THEMES.liga;
+  const cv = document.getElementById('mgrMatchCanvas');
+  const ctx = cv.getContext('2d');
+  const entities = spectatorEntities();
+  document.getElementById('mgrMatchTeams').textContent = `${report.homeName} vs ${report.awayName}`;
+  document.getElementById('mgrMatchScore').textContent = '0 - 0';
+  document.getElementById('mgrMatchMinute').textContent = "0'";
+  document.getElementById('mgrMatchCommentary').innerHTML = '';
+  document.getElementById('mgrMatchContinueBtn').style.display = 'none';
+  const skipBtn = document.getElementById('mgrSkipMatchBtn');
+  skipBtn.style.display = 'inline-block';
+
+  const events = report.commentary.slice();
+  let idx = 0, minute = 0, homeScore = 0, awayScore = 0, finished = false, spectatorRaf = null;
+  let ballAnim = null;
+  const ball = {x:FIELD_W/2, y:FIELD_H/2};
+
+  function applyEvent(ev){
+    const host = document.getElementById('mgrMatchCommentary');
+    const row = document.createElement('div');
+    row.className = 'commentary-line'+(ev.goal?' goal':'');
+    row.textContent = `${Math.floor(ev.minute)}' — ${ev.text}`;
+    host.appendChild(row);
+    host.scrollTop = host.scrollHeight;
+    if(ev.goal){
+      if(ev.homeGoal) homeScore++; else awayScore++;
+      document.getElementById('mgrMatchScore').textContent = `${homeScore} - ${awayScore}`;
+      const banner = document.getElementById('mgrGoalBanner');
+      banner.style.color='var(--gold)'; banner.textContent = '¡GOOOL!';
+      banner.classList.add('show');
+      setTimeout(()=>banner.classList.remove('show'), 1300);
+      const targetX = ev.mine ? FIELD_W-20 : 20;
+      ballAnim = { from:{x:ball.x,y:ball.y}, to:{x:targetX,y:FIELD_H/2}, t:0, dur:0.9 };
+    }
+  }
+  function finishSpectator(){
+    finished = true;
+    if(spectatorRaf) cancelAnimationFrame(spectatorRaf);
+    skipBtn.style.display = 'none';
+    document.getElementById('mgrMatchContinueBtn').style.display = 'inline-block';
+  }
+  function tick(){
+    if(finished) return;
+    const now = performance.now()/1000;
+    [...entities.me, ...entities.opp].forEach(e=>{
+      e.x = e.baseX + Math.sin(now*0.8+e.phase)*14;
+      e.y = e.baseY + Math.cos(now*0.6+e.phase)*10;
+    });
+    minute += 0.14;
+    document.getElementById('mgrMatchMinute').textContent = Math.min(90,Math.floor(minute))+"'";
+    while(idx<events.length && events[idx].minute<=minute){ applyEvent(events[idx]); idx++; }
+    if(ballAnim){
+      ballAnim.t += (1/60)/ballAnim.dur;
+      if(ballAnim.t>=1){ ball.x=FIELD_W/2; ball.y=FIELD_H/2; ballAnim=null; }
+      else { ball.x = ballAnim.from.x+(ballAnim.to.x-ballAnim.from.x)*ballAnim.t; ball.y = ballAnim.from.y+(ballAnim.to.y-ballAnim.from.y)*ballAnim.t; }
+    } else {
+      ball.x = FIELD_W/2 + Math.sin(now*0.4)*40;
+      ball.y = FIELD_H/2 + Math.cos(now*0.5)*30;
+    }
+    drawSpectatorPitch(ctx, theme);
+    entities.me.forEach(e=> drawCube(ctx, e, mgr.clubColor, '#0a0e1a', e.label));
+    entities.opp.forEach(e=> drawCube(ctx, e, '#cfd3e6', '#0a0e1a', e.label));
+    ctx.beginPath(); ctx.fillStyle='#f5f7ff'; ctx.arc(ball.x,ball.y,9,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#222'; ctx.lineWidth=1.2; ctx.stroke();
+    if(minute>=90 && idx>=events.length){ finishSpectator(); return; }
+    spectatorRaf = requestAnimationFrame(tick);
+  }
+  spectatorRaf = requestAnimationFrame(tick);
+  skipBtn.onclick = ()=>{
+    while(idx<events.length){ applyEvent(events[idx]); idx++; }
+    minute = 90;
+    document.getElementById('mgrMatchMinute').textContent = "90'";
+    finishSpectator();
+  };
+  document.getElementById('mgrMatchContinueBtn').onclick = ()=>{
+    showTopScreen('managerWrap');
+    onFinish && onFinish();
+  };
 }
 function finishManagerSeason(){
   const mgr = state.manager;
@@ -4091,7 +4258,9 @@ function startNewManagerCareer(team, divisionNum){
     news: [],
     transferPool: generateTransferPool(team.power),
     lastMatchReport: null,
+    lineup: {},
   };
+  state.manager.lineup = autoPickLineup(state.manager.squad);
   syncManagerClubs();
   state.manager.table = makeManagerTable();
   state.manager.schedule = generateManagerSchedule();
@@ -4216,6 +4385,7 @@ function renderMgrCalendario(){
   const btn = document.getElementById('mgrPlayMatchBtn');
   if(btn) btn.onclick = ()=> playManagerMatchday();
 }
+const LINEUP_SLOT_POS = { POR:{left:10,top:50}, DEF:{left:36,top:25}, MED:{left:62,top:75}, DEL:{left:88,top:50} };
 function renderMgrPlantilla(){
   const el = document.getElementById('mgr-tab-plantilla');
   const mgr = state.manager;
@@ -4223,18 +4393,62 @@ function renderMgrPlantilla(){
   const sorted = [...mgr.squad].sort((a,b)=> posOrder[a.pos]-posOrder[b.pos] || b.ovr-a.ovr);
   el.innerHTML = `
     <div class="card">
-      <h2>🟦 Plantilla</h2>
+      <h2>🟦 Alineación titular</h2>
+      <div class="sub">Los 4 que saltan al campo. Toca una posición para cambiar quién juega ahí.</div>
+      <div class="mini-pitch" id="mgrLineupPitch">
+        ${['POR','DEF','MED','DEL'].map(pos=>{
+          const p = mgr.squad.find(x=>x.id===mgr.lineup[pos]) || mgr.squad.find(x=>x.pos===pos) || mgr.squad[0];
+          const sp = LINEUP_SLOT_POS[pos];
+          return `<div class="mini-pitch-slot" data-lineup-slot="${pos}" style="left:${sp.left}%;top:${sp.top}%;">
+            <div class="pchip" style="background:${mgr.clubColor};color:#04150f;">${pos}</div>
+            <div class="pname">${p ? p.name.split(' ')[0] : '—'}</div>
+            <div class="povr">${p ? p.ovr : ''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <h2>Plantilla completa</h2>
       <div class="sub">${mgr.squad.length} jugadores · Masa salarial: $${managerWageBill().toLocaleString('es-ES')}/semana</div>
-      ${sorted.map(p=>playerCardMiniHtml(p, mgr.clubColor)).join('')}
+      ${sorted.map(p=>playerCardMiniHtml(p, mgr.clubColor, mgr.lineup)).join('')}
     </div>
   `;
+  document.querySelectorAll('#mgrLineupPitch [data-lineup-slot]').forEach(slot=>{
+    slot.onclick = ()=> openLineupPicker(slot.dataset.lineupSlot);
+  });
 }
-function playerCardMiniHtml(p, color){
+function openLineupPicker(pos){
+  const mgr = state.manager;
+  const candidates = [...mgr.squad].sort((a,b)=>b.ovr-a.ovr);
+  openModal(`
+    <h3>Elegir jugador — ${pos}</h3>
+    <div class="sub" style="margin-top:4px;">Cualquier jugador de tu plantilla puede ocupar esta posición.</div>
+    <div style="max-height:340px;overflow-y:auto;margin-top:10px;" id="lineupPickerList">
+      ${candidates.map(p=>`
+        <div class="player-card-mini" data-pick-player="${p.id}" style="cursor:pointer;${mgr.lineup[pos]===p.id?'border-color:var(--accent);':''}">
+          <div class="pcube" style="background:${mgr.clubColor};color:#04150f;">${p.pos}</div>
+          <div class="pinfo"><div class="pname">${p.name}${mgr.lineup[pos]===p.id?' ⭐':''}</div><div class="pmeta">${p.age} años · Forma ${p.form}</div></div>
+          <div class="povr-badge">${p.ovr}</div>
+        </div>
+      `).join('')}
+    </div>
+  `);
+  document.querySelectorAll('#lineupPickerList [data-pick-player]').forEach(row=>{
+    row.onclick = ()=>{
+      mgr.lineup[pos] = row.dataset.pickPlayer;
+      syncManagerClubs();
+      save();
+      closeModal();
+      renderMgrPlantilla();
+      toast('🔄 Alineación actualizada');
+    };
+  });
+}
+function playerCardMiniHtml(p, color, lineup){
   const moraleColor = p.morale>=70?'#34e0a1':(p.morale>=45?'#f5b942':'#ef4463');
+  const isStarter = lineup && Object.values(lineup).includes(p.id);
   return `<div class="player-card-mini">
     <div class="pcube" style="background:${color};color:#04150f;">${p.pos}</div>
     <div class="pinfo">
-      <div class="pname">${p.name}</div>
+      <div class="pname">${p.name}${isStarter?' <span style="color:var(--gold);">⭐ Titular</span>':''}</div>
       <div class="pmeta"><span class="morale-dot" style="background:${moraleColor};"></span>${p.age} años · Forma ${p.form} · Contrato ${p.contractYears}a · $${p.salary.toLocaleString('es-ES')}/sem</div>
     </div>
     <div class="povr-badge">${p.ovr}</div>
@@ -4390,7 +4604,7 @@ function renderMgrCompeticiones(){
 }
 
 /* ============ CUBE FC 26: shell navigation (loading / main menu / club select) ============ */
-const TOP_SCREENS = ['loadingScreen','mainMenu','careerChoiceScreen','futbolistaChoiceScreen','clubSelectScreen','comingSoonScreen','managerWrap','careerScreen'];
+const TOP_SCREENS = ['loadingScreen','mainMenu','careerChoiceScreen','futbolistaChoiceScreen','clubSelectScreen','comingSoonScreen','managerWrap','managerMatchScreen','careerScreen'];
 function showTopScreen(id){
   TOP_SCREENS.forEach(sid=>{
     const el = document.getElementById(sid);
@@ -4402,25 +4616,23 @@ function switchToTab(name){
   document.querySelectorAll('.tabpane').forEach(p=>p.style.display = p.id==='tab-'+name ? 'block' : 'none');
 }
 const MAIN_MENU_MODES = [
-  {id:'carrera', icon:'⚽', label:'Carrera', soon:false},
-  {id:'manager', icon:'🧠', label:'Manager', soon:false},
-  {id:'quickmatch', icon:'🎮', label:'Partido rápido', soon:true},
-  {id:'ultimate', icon:'🃏', label:'Ultimate Team', soon:true},
-  {id:'openworld', icon:'🌍', label:'Mundo abierto', soon:true},
-  {id:'shop', icon:'🛒', label:'Tienda', soon:true},
-  {id:'profile', icon:'👤', label:'Perfil', soon:false},
-  {id:'settings', icon:'⚙️', label:'Ajustes', soon:false},
+  {id:'carrera', icon:'⚽', label:'Carrera', soon:false, color:'#34e0a1'},
+  {id:'quickmatch', icon:'🎮', label:'Partido rápido', soon:true, color:'#38bdf8'},
+  {id:'ultimate', icon:'🃏', label:'Ultimate Team', soon:true, color:'#a855f7'},
+  {id:'openworld', icon:'🌍', label:'Mundo abierto', soon:true, color:'#22d3ee'},
+  {id:'shop', icon:'🛒', label:'Tienda', soon:true, color:'#f5b942'},
+  {id:'profile', icon:'👤', label:'Perfil', soon:false, color:'#f472b6'},
+  {id:'settings', icon:'⚙️', label:'Ajustes', soon:false, color:'#9ca8d8'},
 ];
 function renderMainMenu(){
   const grid = document.getElementById('mainMenuGrid');
-  grid.innerHTML = MAIN_MENU_MODES.map(m=>`<div class="mode-card ${m.soon?'soon':''}" data-mode="${m.id}"><div class="ico">${m.icon}</div><div class="label">${m.label}</div></div>`).join('');
+  grid.innerHTML = MAIN_MENU_MODES.map((m,i)=>`<div class="mode-card ${m.soon?'soon':''}" data-mode="${m.id}" style="--card-accent:${m.color};--card-glow:${m.color}66;animation-delay:${(i*0.06).toFixed(2)}s;"><div class="ico-wrap">${m.icon}</div><div class="label">${m.label}</div></div>`).join('');
   grid.querySelectorAll('[data-mode]').forEach(card=>{
     card.onclick = ()=> handleMainMenuClick(card.dataset.mode);
   });
 }
 function handleMainMenuClick(id){
   if(id==='carrera'){ showTopScreen('careerChoiceScreen'); return; }
-  if(id==='manager'){ enterManagerFlow(); return; }
   if(id==='settings'){ openSettings(); return; }
   if(id==='profile'){
     if(state.needsNamePrompt){ showComingSoon('👤','Perfil','Empieza una carrera de futbolista primero para tener un perfil.'); }
